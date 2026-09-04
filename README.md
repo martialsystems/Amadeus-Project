@@ -1,13 +1,14 @@
 # Amadeus
 ## About Amadeus-Project
-Amadeus started as a side project during a relatively light academic quarter—mostly out of curiosity and boredom. What began as a simple experiment slowly evolved into a long-term personal project that I continued refining even when coursework became heavier.
+Amadeus is a Steins;Gate-inspired AI character assistant designed to feel less like a chatbot and more like a persistent virtual companion.
 
-As the project grew, I repeatedly refactored it from the ground up. Early design mistakes—such as redundant API calls, fragile memory handling, and tightly coupled components—were removed and replaced with cleaner architecture, consolidated response pipelines, persistent memory, and more efficient voice and language processing. Much of the work has been about undoing bad design choices and rebuilding them properly once I had the experience to recognize them.
+The project combines large language models, long-term conversational memory, customizable personalities, bilingual response generation, and neural voice synthesis into a single interactive system. Amadeus remembers previous conversations across sessions, maintains character context over time, and generates both English dialogue for the interface and natural Japanese speech for voice output.
 
-The inspiration for Amadeus comes from Steins;Gate, which I watched years ago. At the time, the idea of building something like Amadeus felt purely fictional. After progressing through university coursework in computer science, physics, and systems programming, I finally had the technical foundation to turn that inspiration into a real, working system rather than just a concept.
+The backend is built in Python and integrates configurable LLMs through OpenRouter, persistent SQLite-based memory, and GPT-SoVITS for character voice synthesis. The system is designed modularly so that components such as the language model, memory system, voice pipeline, and user interface can be developed and replaced independently.
 
-Today, Amadeus is both a creative and technical sandbox: a place to experiment with conversational memory, voice synthesis, real-time interaction, and long-running assistant behavior. It’s not meant to be perfect or finished—it's a living project that reflects how my understanding of software architecture and system design has matured over time.
+Amadeus began as a small personal experiment inspired by Steins;Gate. Over time, it became a much larger software project and a sandbox for experimenting with conversational AI, persistent memory, speech synthesis, character interaction, and real-time assistant behavior.
 
+The project is still actively evolving. Rather than being a finished product, Amadeus is an ongoing attempt to explore what happens when an AI character is given memory, personality, voice, and continuity.
 
 ## Installation (Conda Recommended)
 
