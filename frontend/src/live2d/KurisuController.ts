@@ -150,17 +150,24 @@ export class KurisuController {
       this.canvas.width /
       this.canvas.height;
 
+    const characterScale = 1.15;
+
     if (aspect > 1) {
       matrix.scale(
-        1 / aspect,
-        1
+        (1 / aspect) * characterScale,
+        characterScale
       );
     } else {
       matrix.scale(
-        1,
-        aspect
+        characterScale,
+        aspect * characterScale
       );
     }
+
+    matrix.translate(
+      0,
+      -0.12
+    );
 
     const viewport = [
       0,
