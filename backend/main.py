@@ -4,7 +4,7 @@ apply_all_patches()
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 import logging
-from app import application
+from api import application
 logging.basicConfig(level=logging.ERROR)
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module='torch')

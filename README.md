@@ -10,239 +10,585 @@ Amadeus began as a small personal experiment inspired by Steins;Gate. Over time,
 
 The project is still actively evolving. Rather than being a finished product, Amadeus is an ongoing attempt to explore what happens when an AI character is given memory, personality, voice, and continuity.
 
-## Installation (Conda Recommended)
+## Installation
 
-### 0. Installation Guide:
-https://youtu.be/oP2qLuUpaIg?si=8uIv3EHKS_ntbyRU
+> **Note:** Amadeus is currently transitioning from the old Unity frontend to a React-based WebUI.
+> The installation instructions below use the new `backend/` + `Amadeus-WebUI/` structure.
 
-### 1. Install Conda
-Install Anaconda:
+### 0. Requirements
+
+Before installing Amadeus, make sure you have:
+
+* Git
+* Conda / Anaconda
+* Node.js + npm
+* Git LFS
+* FFmpeg
+* Python 3.10 for GPT-SoVITS
+* Visual Studio Build Tools on Windows
+* An NVIDIA GPU is recommended for faster voice synthesis, but CPU operation is also supported.
+
+#### Install Conda
+
+Download Anaconda:
+
 https://www.anaconda.com/
 
-Install VS Tools:
-https://visualstudio.microsoft.com/downloads/?q=build+tools
+#### Install Node.js
 
-- Scroll down to you see Tools for Visual Studio
-- Download Build Tools for Visual Studio 2026
+Download Node.js:
 
+https://nodejs.org/
 
-### 2. Clone the repository(s)
-```
-# NOTES: ALWAYS USE ANACONDA PROMPT, NEVER USE POWERSHELL. POWERSHELL CAUSES MAJOR PROBLEMS WITH CONDA
+Node.js is required for the Amadeus WebUI.
 
+#### Windows Only: Install Visual Studio Build Tools
+
+Download:
+
+https://visualstudio.microsoft.com/downloads/
+
+Scroll to **Tools for Visual Studio** and install **Build Tools for Visual Studio**.
+
+> On Windows, using **Anaconda Prompt** is recommended when working with the Conda environments. PowerShell may cause Conda/environment issues depending on system configuration.
+
+---
+
+## 1. Clone Amadeus
+
+Clone the repository:
+
+```bash
 git clone https://github.com/reflectors02/Amadeus-Project.git
 cd Amadeus-Project
+```
 
-# INSTALLING GPTSOVITS (IMPORTANT!)
+Now clone GPT-SoVITS inside the Amadeus repository:
 
-# Clone the required GPT-SoVITS dependency inside the Amadeus-folder
+```bash
 git clone https://github.com/RVC-Boss/GPT-SoVITS.git
+```
 
+Your repository should now roughly look like this:
 
-# CHECK IF THIS IS TRUE
-Your repository should look like this:
+```text
 Amadeus-Project/
-├── Amadeus/
+├── backend/
+│   ├── main.py
+│   ├── app.py
+│   ├── Amadeus.py
+│   ├── Amadeus_memory.py
+│   ├── AmadeusSpeak.py
+│   ├── run_gptsovits.py
 │   └── environment.yml
+│
+├── Amadeus-WebUI/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
+│
 ├── GPT-SoVITS/
 │   ├── requirements.txt
 │   └── extra-req.txt
-└── Builds/
-...
-
+│
+└── README.md
 ```
 
-### 3. Create Virtual Environment(s)
-```
-# CREATING AMADEUS ENVIRONMENT
+---
 
-(cd into Amadeus-Project/Amadeus)
-cd Amadeus
+## 2. Create the Amadeus Backend Environment
+
+From the repository root:
+
+```bash
+cd backend
 conda env create -f environment.yml
+```
 
+Activate the environment:
 
-# CREATING GPTSOVITS ENVIRONMENT
+```bash
+conda activate amadeus
+```
+
+Then return to the repository root:
+
+```bash
 cd ..
-(you should now be returned to Amadeus-Project/)
+```
 
+---
+
+## 3. Create the GPT-SoVITS Environment
+
+Enter the GPT-SoVITS directory:
+
+```bash
 cd GPT-SoVITS
-(you should now be in Amadeus-Project/GPT-SoVITS)
+```
 
+Create the environment:
+
+```bash
 conda create -n GPTSoVits python=3.10
 conda activate GPTSoVits
+```
 
+Install GPT-SoVITS dependencies:
+
+```bash
 pip install -r extra-req.txt --no-deps
 pip install -r requirements.txt
+```
 
-# Install FFMPEG
+Install FFmpeg:
 
+```bash
 conda install ffmpeg
-
 ```
 
-### 4. NVIDIA GPU ONLY:
+Return to the Amadeus project root when finished:
 
+```bash
+cd ..
 ```
-#If you have an NVIDIA GPU, run these commands to enable CUDA support:
 
+---
+
+## 4. Configure PyTorch
+
+### NVIDIA GPU
+
+If you have an NVIDIA GPU and want CUDA acceleration:
+
+```bash
 conda activate GPTSoVits
-
-# remove CPU-only torch packages
-pip uninstall -y torch torchvision torchaudio
-
-# install CUDA-enabled torch (Windows)
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-``` 
-
-### 4.5 CPU ONLY---NVIDIA GPU PLEASE SKIP
 ```
-# In this step, we're downgrading torch because torch version 2.9 has some malfunctions. We must switch back to 2.5.1
 
+Remove the CPU-only PyTorch packages:
+
+```bash
+pip uninstall -y torch torchvision torchaudio
+```
+
+Install the CUDA-enabled versions:
+
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+### CPU Only
+
+If you do **not** have an NVIDIA GPU:
+
+```bash
+conda activate GPTSoVits
+```
+
+Remove the existing PyTorch installation:
+
+```bash
 pip uninstall -y torch torchvision torchaudio torchcodec
+```
+
+Install the known working CPU versions:
+
+```bash
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 ```
 
-### 5. Download required pretrained_models from huggingface
+---
 
-```
-# This step requires Git LFS. If you don't have it, run: 'git lfs install'
+## 5. Download GPT-SoVITS Pretrained Models
 
-conda activate GPTSoVITS
-cd Desktop
+This step requires Git LFS.
 
+Install Git LFS if necessary:
+
+```bash
 git lfs install
+```
+
+Clone the pretrained model repository somewhere temporary:
+
+```bash
 git clone https://huggingface.co/lj1995/GPT-SoVITS
+```
 
-rename the folder to something else like "DOWNLOADEDMODELS"
+> This download is several gigabytes.
 
-(This is a 5gb download! It will take a while)
+Copy the downloaded pretrained model files into:
 
-After installing it, drag the contents into Amadeus-Project/GPT-SoVITS/GPT_SoVITS/pretrained_models
-Then delete the empty folder
-
-Repo Check: Make sure the pretrained_models looks like this
-
+```text
 Amadeus-Project/
-├── Amadeus/
-│   ├── main.py
-│   └── run_gptsovits.py
-├── GPT-SoVITS/
-│   ├── GPT_SoVITS/
-│   │   └── pretrained_models/
-│   │       ├── chinese-hubert-base/
-│   │       ├── chinese-roberta-wwm-ext-large/
-│   │       ├── fast_langdetect/
-│   │       ├── gsv-v2final-pretrained/
-│   │       ├── gsv-v4-pretrained/
-│   │       ├── models--nvidia--bigvgan_v2_24khz_100band_256x/
-│   │       ├── s1bert25hz-2kh-longer-epoch.ckpt
-│   │       ├── s1v3.ckpt
-│   │       ├── s2D488k.pth
-│   │       ├── s2G488k.pth
-│   │       └── s2Gv3.pth
-└── Builds/
-    ├── Amadeus_UI.exe (Windows)
-    └── Amadeus_UI.app (Mac)
-
-
+└── GPT-SoVITS/
+    └── GPT_SoVITS/
+        └── pretrained_models/
 ```
 
-### 6. Launch Procedures
+The directory should contain the GPT-SoVITS pretrained resources required by your installed GPT-SoVITS version.
+
+For example:
+
+```text
+GPT-SoVITS/
+└── GPT_SoVITS/
+    └── pretrained_models/
+        ├── chinese-hubert-base/
+        ├── chinese-roberta-wwm-ext-large/
+        ├── fast_langdetect/
+        ├── gsv-v2final-pretrained/
+        ├── gsv-v4-pretrained/
+        ├── models--nvidia--bigvgan_v2_24khz_100band_256x/
+        ├── s1bert25hz-2kh-longer-epoch.ckpt
+        ├── s1v3.ckpt
+        ├── s2D488k.pth
+        ├── s2G488k.pth
+        └── s2Gv3.pth
 ```
-#Note: This procedure will require the use of two terminal windows (Anaconda Prompt), so open two
 
-Step 1: Launch GPT-SoVITS from terminal 1
+---
 
+## 6. Install the Amadeus WebUI
+
+From the Amadeus repository root:
+
+```bash
+cd Amadeus-WebUI
+npm install
+```
+
+This installs the React/Vite frontend dependencies.
+
+You only need to run `npm install` during the initial setup or when frontend dependencies change.
+
+---
+
+# Launching Amadeus
+
+Amadeus currently consists of three processes:
+
+```text
+GPT-SoVITS
+     ↓
+Amadeus Flask Backend
+     ↓
+Amadeus WebUI
+```
+
+Until the automatic launcher is implemented, open **three terminal windows**.
+
+---
+
+## Terminal 1 — Start GPT-SoVITS
+
+From the repository root:
+
+```bash
 conda activate GPTSoVits
-# Navigate to the root folder first if you just opened the prompt
-cd Amadeus-Project/Amadeus
+cd backend
 python run_gptsovits.py
+```
 
+Wait until GPT-SoVITS has finished starting.
 
-Step 2: Launch Flask server from terminal 2
+The voice server normally runs at:
 
+```text
+http://127.0.0.1:9872
+```
+
+---
+
+## Terminal 2 — Start the Amadeus Backend
+
+Open another terminal:
+
+```bash
 conda activate amadeus
-cd Amadeus-Project/Amadeus
+cd Amadeus-Project/backend
 python main.py
-
-
-Step 3: Ensure both terminals are up and running without issue before doing this step!
-
-MACOS: Run Amadeus-Project/Builds/Amadeus_UI.app
-WINDOWS: Run Amadeus-Project/Builds/Amadeus_UI.exe/Amadeus.exe
-
-
-
-Rule of thumb: This is a general guide that should work for most systems. I cannot possibly take care of every possibe scenario. If you encounter any issues not listed here, just ask chatgpt. 
 ```
 
-### Updating the Project
-The project does not update automatically. To get the latest features and bug fixes, you must manually pull updates for both the main project and its dependencies.
+The Flask backend should start on:
 
-Standard Update
-Run these commands in your Anaconda Prompt:
-
+```text
+http://127.0.0.1:5000
 ```
-cd Amadeus-Project
 
-# 1. Update the main Amadeus files
-cd Amadeus-Project
+---
+
+## Terminal 3 — Start the WebUI
+
+Open another terminal:
+
+```bash
+cd Amadeus-Project/Amadeus-WebUI
+npm run dev
+```
+
+Vite should display a local address similar to:
+
+```text
+http://localhost:5173
+```
+
+Open that address in your browser.
+
+Amadeus should now be running.
+
+---
+
+# Updating Amadeus
+
+Amadeus does not currently update automatically.
+
+From the repository root:
+
+```bash
 git pull origin main
+```
 
-conda activate Amadeus
-cd Amadeus 
+### Update the Backend Environment
+
+```bash
+conda activate amadeus
+cd backend
 conda env update -f environment.yml --prune
+cd ..
+```
 
+### Update the WebUI
 
-# 2. Update the GPT-SoVITS dependency (IF GPTSoVITS has updated)
+```bash
+cd Amadeus-WebUI
+npm install
+cd ..
+```
+
+Running `npm install` again ensures any newly added frontend packages are installed.
+
+### Update GPT-SoVITS
+
+Only do this when Amadeus requires or supports a newer GPT-SoVITS version:
+
+```bash
 cd GPT-SoVITS
 git pull origin main
+pip install -r requirements.txt
+cd ..
 ```
 
-## Commonly encountered issues
-1. "Error: Your local changes would be overwritten" If you have modified any files and git pull fails, run this command to reset your local files to match the online version (Warning: this deletes your local code changes):
-```
+---
+
+# Common Issues
+
+### 1. Git says local changes would be overwritten
+
+If you intentionally want to discard **all local code changes** and reset your repository to match GitHub:
+
+```bash
 git reset --hard origin/main
 git pull origin main
 ```
 
-2. App won't launch after update? If the app crashes or behaves strangely immediately after an update, your database schema might be outdated. Reset your memory by deleting the database file:
+> **Warning:** This permanently deletes uncommitted local changes.
 
-[!WARNING] THIS WILL DELETE YOUR AI GIRLFRIEND'S MEMORIES. If you want to keep them, make a copy of the file first and try to convert it to the new format later.
+---
+
+### 2. Amadeus cannot connect to the backend
+
+Make sure the Flask server is running:
+
+```text
+http://127.0.0.1:5000
 ```
-cd Amadeus-Project/Amadeus/txtfiles
-del memory.db
+
+The WebUI expects the backend on port `5000`.
+
+---
+
+### 3. Amadeus has no voice
+
+Make sure GPT-SoVITS is running before sending a message.
+
+The GPT-SoVITS server should normally be available at:
+
+```text
+http://127.0.0.1:9872
 ```
-3. Dependency Errors? If new features were added, you might need to update your environments:
+
+Also verify that the required pretrained models exist under:
+
+```text
+GPT-SoVITS/GPT_SoVITS/pretrained_models/
 ```
-# Update Amadeus env
+
+---
+
+### 4. WebUI dependencies are missing
+
+From:
+
+```text
+Amadeus-Project/Amadeus-WebUI/
+```
+
+run:
+
+```bash
+npm install
+```
+
+Then restart the WebUI:
+
+```bash
+npm run dev
+```
+
+---
+
+### 5. Backend dependencies are missing or outdated
+
+Run:
+
+```bash
+conda activate amadeus
+cd backend
 conda env update -f environment.yml --prune
+```
 
-# Update GPT-SoVITS env
+---
+
+### 6. GPT-SoVITS dependencies are missing
+
+Run:
+
+```bash
 conda activate GPTSoVits
+cd GPT-SoVITS
 pip install -r requirements.txt
 ```
 
+---
 
+### 7. Resetting conversation memory
 
+If a database/schema change causes Amadeus to fail after an update, you may need to reset the conversation database.
 
+The database is located at:
 
-## Changelogs
+```text
+backend/txtfiles/memory.db
+```
 
-### Amadeus – Release Notes (Model Control + Backend Stability) — 12/20/25
+> **WARNING:** Deleting this file permanently deletes Amadeus's stored conversation memories. Back it up first if you want to preserve them.
 
-**New Features**
+macOS/Linux:
 
-1. Runtime LLM Model Switching
-   Added support for changing the active LLM model directly from the Unity UI.
-   Users can now enter a model name (e.g. deepseek/deepseek-chat-v3-0324) and apply it without restarting the backend.
+```bash
+rm backend/txtfiles/memory.db
+```
 
-2. Current Model Display
-   The active LLM model is now displayed in the settings panel.
-   Unity queries the backend and reflects the currently selected model in real time.
+Windows:
 
-3. Unity ↔ Flask Model API
-   Implemented /setLLMModel and /getCurrLLMModel endpoints.
-   Enables clean, stateless communication between the Unity frontend and Python backend.
+```bat
+del backend\txtfiles\memory.db
+```
+
+Restart the backend afterward. A new database will be created automatically.
+
+---
+
+## Planned Improvement: Automatic Startup
+
+The current three-terminal startup process is temporary.
+
+A future launcher will automatically:
+
+1. Start GPT-SoVITS.
+2. Wait for the voice server.
+3. Start the Amadeus backend.
+4. Wait for Flask.
+5. Start the WebUI.
+6. Open Amadeus automatically.
+7. Shut down all services cleanly when Amadeus exits.
+
+The eventual goal is for Amadeus to launch through a single command or application instead of requiring manual terminal setup.
+
+---
+
+# Changelog
+
+## WebUI Migration — September 3, 2026
+
+### New Frontend Architecture
+
+Development has begun on replacing the original Unity frontend with a React + TypeScript WebUI.
+
+The repository has been reorganized into separate frontend and backend components:
+
+```text
+backend/
+Amadeus-WebUI/
+GPT-SoVITS/
+```
+
+### Initial WebUI Features
+
+The new WebUI currently supports:
+
+* Conversation display
+* Sending messages to the existing Flask backend
+* Loading persistent conversation memory
+* Runtime LLM model selection
+* Conversation memory reset
+* Backend connection/status display
+* Responsive browser-based interface
+* Dedicated viewport prepared for future Live2D Cubism integration
+
+The Python AI backend remains largely independent from the frontend, allowing the Unity interface to be replaced without rewriting Amadeus's core conversational system.
+
+### Planned
+
+Upcoming WebUI work includes:
+
+* Live2D Cubism integration
+* Browser-controlled voice playback
+* Lip synchronization
+* Character expressions and motions
+* Improved settings interface
+* Automatic startup/launcher system
+
+---
+
+## Model Control + Backend Stability — December 20, 2025
+
+### Runtime LLM Model Switching
+
+Added support for changing the active LLM model while Amadeus is running.
+
+Users can enter a model name such as:
+
+```text
+deepseek/deepseek-chat-v3-0324
+```
+
+and apply it without restarting the backend.
+
+### Current Model Display
+
+The currently active LLM model can be queried through the backend and displayed by the frontend.
+
+### Frontend ↔ Flask Model API
+
+Implemented:
+
+```text
+/setLLMModel
+/getCurrLLMModel
+```
+
+These endpoints provide a clean interface between the frontend and the Python backend.
 
 
