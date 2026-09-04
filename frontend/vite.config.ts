@@ -1,3 +1,17 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-export default defineConfig({ plugins: [react()], server: { port: 5173 } });
+import path from "path";
+
+export default defineConfig({
+  plugins: [react()],
+
+  resolve: {
+    extensions: [".ts", ".tsx", ".js"],
+    alias: {
+      "@framework": path.resolve(
+        __dirname,
+        "./cubism/Framework/src"
+      ),
+    },
+  },
+});

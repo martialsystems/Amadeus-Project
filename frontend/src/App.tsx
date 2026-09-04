@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-
+import Live2DCharacter from "./components/Live2DCharacter";
 import {
   getCurrentModel,
   getMemory,
@@ -163,17 +163,7 @@ export default function App() {
         <div className="character-stage">
           <div className="scanline" />
 
-          <div className="character-placeholder">
-            <span>LIVE2D</span>
-
-            <strong>
-              Character viewport
-            </strong>
-
-            <small>
-              Cubism model goes here next
-            </small>
-          </div>
+          <Live2DCharacter />
         </div>
 
         <footer className="system-footer">
