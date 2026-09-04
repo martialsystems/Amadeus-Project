@@ -73,6 +73,21 @@ button {
   z-index: 2;
 }
 
+.brand h1 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.34em;
+  color: #cfd8e6;
+}
+
+.brand p {
+  margin: 4px 0 0;
+  color: #8fa0b8;
+  font-size: 11px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
 .brand-mark {
   width: 44px;
   height: 44px;
@@ -80,22 +95,9 @@ button {
   place-items: center;
   border: 1px solid rgba(145, 174, 215, 0.5);
   background: rgba(103, 139, 188, 0.08);
+  color: #b8c8dc;
   letter-spacing: 0.1em;
   font-weight: 700;
-}
-
-.brand h1 {
-  margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.34em;
-}
-
-.brand p {
-  margin: 4px 0 0;
-  color: #7f8a9b;
-  font-size: 11px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
 }
 
 .character-stage {
@@ -335,6 +337,7 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
+  color: #d8dee7;
   line-height: 1.62;
   white-space: pre-wrap;
 }
