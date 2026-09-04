@@ -1,31 +1,61 @@
+```gitignore
 # =====================
 # Python / Conda
 # =====================
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
 .env
 *.env
+.venv/
+venv/
 
 # =====================
-# Amadeus runtime data
+# Amadeus backend runtime data
 # =====================
 backend/__pycache__/
 backend/unused_files/
-backend/txtfiles/api_key.txt
-backend/txtfiles/memory.json
-backend/ttsout/generated.wav
-backend/txtfiles/memory.db
 
+# Secrets
+backend/data/api_key.txt
+
+# Persistent / generated runtime data
+backend/data/memory.db
+backend/data/memory.json
+backend/generated/
+backend/ttsout/generated.wav
+
+# =====================
+# Frontend / Node
+# =====================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Legacy WebUI folder name, if still present locally
+Amadeus-WebUI/node_modules/
+Amadeus-WebUI/dist/
+Amadeus-WebUI/.vite/
 
 # =====================
 # Logs
 # =====================
 log_*.txt
+*.log
 
 # =====================
-# GPT-SoVITS (heavy / generated)
+# GPT-SoVITS
+# Large external dependency cloned separately
 # =====================
-GPT-SoVITS
+GPT-SoVITS/
+
+# =====================
+# IDE / Editor
+# =====================
+.vscode/
+.idea/
 
 # =====================
 # OS junk
@@ -33,6 +63,8 @@ GPT-SoVITS
 .DS_Store
 Thumbs.db
 
-
-#other:
-UsefulInfo
+# =====================
+# Local-only files
+# =====================
+UsefulInfo/
+```
