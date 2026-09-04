@@ -15,8 +15,7 @@ from tqdm import tqdm
 tqdm.disable = True
 
 def run_flask():
-    application.run(debug=False, use_reloader=False, port=5000)
-
+    application.run(port=5050)
 if __name__ == "__main__":
     run_flask()
 

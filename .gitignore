@@ -67,4 +67,5 @@ Thumbs.db
 # Local-only files
 # =====================
 UsefulInfo/
+.runtime/
 ```
