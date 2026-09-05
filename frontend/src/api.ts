@@ -122,8 +122,10 @@ export async function sendInteraction(interactionValue: number): Promise<Message
   if (typeof data.response !== "string") throw new Error("Invalid interaction response");
   return {
     response: data.response,
-    // /audio/... belongs to the frontend's public directory, not Flask.
-    speechUrl: typeof data.audio_url === "string" && data.audio_url.startsWith("/audio/")
-      ? data.audio_url : undefined,
+    speechUrl:
+      typeof data.audio_url === "string" &&
+      data.audio_url.startsWith("/reaction_audio/")
+        ? `${API_BASE}${data.audio_url}`
+        : undefined,
   };
 }

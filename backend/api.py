@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 
 from chat import (
@@ -18,12 +18,14 @@ import threading
 import uuid
 import time
 from itertools import chain
+from pathlib import Path
 
 application = Flask(__name__)
 CORS(application)
 
 _speech_requests: dict[str, tuple[float, str]] = {}
 _speech_requests_lock = threading.Lock()
+_reaction_audio_dir = Path(__file__).resolve().parent / "assets" / "reaction_audio"
 
 # pre:
 # - JSON body contains an "key" field
@@ -116,6 +118,14 @@ def speech(speech_id):
     return response
 
 
+@application.route("/reaction_audio/<path:filename>", methods=["GET"])
+def reaction_audio(filename):
+    # Serve prerecorded interaction lines from backend/assets/reaction_audio.
+    response = send_from_directory(_reaction_audio_dir, filename, conditional=True)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # pre
 # post:
 # - clears all stored conversation memory
@@ -177,4 +187,15 @@ def doSpecialInteraction():
         reply = SpecialInteraction(interaction_value)
     except ValueError:
         return jsonify({"message": "Unknown interaction"}), 400
+
+    # chat.py stores reaction recordings relative to backend/. Convert those
+    # internal paths into a browser-facing Flask endpoint.
+    audio_url = reply.get("audio_url")
+    prefix = "assets/reaction_audio/"
+    if isinstance(audio_url, str) and audio_url.startswith(prefix):
+        reply = {
+            **reply,
+            "audio_url": "/reaction_audio/" + audio_url[len(prefix):],
+        }
+
     return jsonify({"status": "ok", **reply})
