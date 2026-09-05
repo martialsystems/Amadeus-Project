@@ -740,7 +740,7 @@ Cubism shader integration     ✓
 Idle motion                   ✓
 Cubism physics                ✓
 Touch interaction             implementing
-Special touch reactions       implementing
+Special touch reactions       ✓
 Prompting improvements        planned (high priority)
 Lip synchronization           later
 Expression control            later
