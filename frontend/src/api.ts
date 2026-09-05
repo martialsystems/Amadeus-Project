@@ -6,6 +6,21 @@ export type MemoryMessage = {
 
 const API_BASE = "http://127.0.0.1:5050";
 
+export async function getApiKeyStatus(): Promise<boolean> {
+  const response = await fetch(`${API_BASE}/api_key_status`, { cache: "no-store" });
+  const data = await parseResponse(response);
+  if (typeof data.configured !== "boolean") throw new Error("Could not read API key status");
+  return data.configured;
+}
+
+export async function setApiKey(key: string): Promise<void> {
+  await parseResponse(await fetch(`${API_BASE}/set_key`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  }));
+}
+
 async function parseResponse(response: Response) {
   const data = await response.json().catch(() => ({}));
 

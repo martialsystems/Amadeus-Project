@@ -33,10 +33,15 @@ def getLLMModel():
 #      API_Key.txt should also be updated accordingly.
 def setKey(key_string: str):
     global API_KEY
-    API_KEY = key_string.strip()
-    store.save_api_key(API_KEY)
+    next_key = key_string.strip()
+    store.save_api_key(next_key)
+    API_KEY = next_key
     reset_llm()  # IMPORTANT: recreate with new key
-    print(f"[Amadeus] API key set: {API_KEY[:5]}...")
+    print("[Amadeus] API key updated")
+
+
+def has_api_key() -> bool:
+    return bool(API_KEY.strip())
 
 
 #pre:

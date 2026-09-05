@@ -4,6 +4,7 @@ from flask_cors import CORS
 from chat import (
     getOutputPacked,
     setKey,
+    has_api_key,
     resetMemory,
     setLLMModel,
     getLLMModel,
@@ -28,13 +29,23 @@ CORS(application)
 @application.route("/set_key", methods=["POST"])
 def set_api_key():
     print("[Flask] /set_key route triggered")  # ← add this
-    data = request.get_json()
-    key = data.get("key", "")
-    if key:
-        setKey(key)
+    data = request.get_json(silent=True)
+    key = data.get("key") if isinstance(data, dict) else None
+    if isinstance(key, str) and key.strip():
+        try:
+            setKey(key.strip())
+        except OSError:
+            return jsonify({"message": "Could not save API key"}), 500
         return jsonify({"status": "ok", "message": "API key received"})
     else:
         return jsonify({"status": "error", "message": "No key received"}), 400
+
+
+@application.route("/api_key_status", methods=["GET"])
+def api_key_status():
+    response = jsonify({"configured": has_api_key()})
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 # pre:
 # - JSON body contains "user_input" as a string
@@ -44,6 +55,8 @@ def set_api_key():
 # - returns English UI text to the client
 @application.route("/", methods=["POST"])
 def request_message():
+    if not has_api_key():
+        return jsonify({"message": "No API key. Add one in Settings."}), 400
     print("[Flask] / route triggered")  
     content = request.get_json()
     user_input = content.get("user_input", "")

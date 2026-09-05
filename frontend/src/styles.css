@@ -234,6 +234,14 @@ button {
   box-shadow: 0 0 12px rgba(121, 168, 137, 0.45);
 }
 
+.status-dot.warning {
+  background: #e5b94f;
+  box-shadow: 0 0 12px rgba(229, 185, 79, 0.35);
+}
+
+.settings-help { color: #99a5b7; font-size: 12px; line-height: 1.5; margin: 8px 0 20px; }
+.settings-error { color: #e3b5b5; font-size: 13px; }
+
 .chat-panel {
   min-width: 0;
   min-height: 0;
@@ -455,6 +463,8 @@ button {
 }
 
 .modal {
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
   width: min(480px, 100%);
   padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);

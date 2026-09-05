@@ -27,6 +27,7 @@ def load_api_key() -> str:
         return f.read().strip()
 
 def save_api_key(key: str) -> None:
+    _ensure_file(PATH_TO_API_KEY, default_text="")
     with open(PATH_TO_API_KEY, "w", encoding="utf-8") as f:
         f.write((key or "").strip())
 
@@ -162,5 +163,4 @@ def reset_memory() -> None:
 
     conn.commit()
     conn.close()
-
 

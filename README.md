@@ -737,13 +737,13 @@ Short-term priorities:
 Live2D static rendering       ✓
 Live2D model scaling          ✓
 Cubism shader integration     ✓
-Idle motion                   next
-Cubism physics                next
-Touch interaction             planned
-Special touch reactions       planned
-Lip synchronization           planned
-Expression control            planned
-Prompting improvements        planned
+Idle motion                   ✓
+Cubism physics                implementing
+Touch interaction             implementing
+Special touch reactions       implementing
+Prompting improvements        planned (high priority)
+Lip synchronization           later
+Expression control            later
 Memory redesign               later
 ```
 

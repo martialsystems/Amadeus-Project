@@ -3,6 +3,8 @@ import Live2DCharacter from "./components/Live2DCharacter";
 import type { Live2DCharacterHandle } from "./components/Live2DCharacter";
 import {
   getCurrentModel,
+  getApiKeyStatus,
+  setApiKey,
   getMemory,
   MemoryMessage,
   resetMemory,
@@ -21,6 +23,20 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("Connecting to Amadeus...");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [apiKey, setApiKeyInput] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
+  const missingKey = hasApiKey === false;
+  const idleStatus = status === "Online" || status === "Memory cleared" || status.startsWith("Model set to ");
+  const footerStatus = missingKey && idleStatus ? "No API key" : status;
+
+  function closeSettings() {
+    if (savingSettings) return;
+    setApiKeyInput("");
+    setSettingsError("");
+    setSettingsOpen(false);
+  }
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const characterRef = useRef<Live2DCharacterHandle>(null);
@@ -37,13 +53,15 @@ export default function App() {
 
   async function initialize() {
     try {
-      const [memory, currentModel] = await Promise.all([
+      const [memory, currentModel, configured] = await Promise.all([
         getMemory(),
         getCurrentModel(),
+        getApiKeyStatus(),
       ]);
 
       setMessages(memory);
       setModelName(currentModel);
+      setHasApiKey(configured);
       setStatus("Online");
     } catch (error) {
       setStatus(
@@ -60,6 +78,11 @@ export default function App() {
     const text = input.trim();
 
     if (!text || loading) {
+      return;
+    }
+
+    if (hasApiKey !== true) {
+      setSettingsOpen(true);
       return;
     }
 
@@ -93,7 +116,7 @@ export default function App() {
         {
           role: "assistant",
           content:
-            "I couldn't reach the backend. Make sure the Flask server is running on port 5000.",
+            error instanceof Error ? error.message : "The request failed. Please try again.",
         },
       ]);
 
@@ -110,21 +133,33 @@ export default function App() {
   async function saveModel() {
     const nextModel = model.trim();
 
+    if (savingSettings || loading) return;
     if (!nextModel) {
+      setSettingsError("Enter an LLM model.");
       return;
     }
 
+    setSavingSettings(true);
+    setSettingsError("");
+    let keySaved = false;
     try {
+      if (apiKey.trim()) {
+        await setApiKey(apiKey.trim());
+        keySaved = true;
+        setHasApiKey(true);
+        setApiKeyInput("");
+      }
       await setModel(nextModel);
 
       setStatus(`Model set to ${nextModel}`);
       setSettingsOpen(false);
     } catch (error) {
-      setStatus(
-        error instanceof Error
-          ? error.message
-          : "Could not change model"
+      setSettingsError(
+        (keySaved ? "API key saved, but model update failed. " : "") +
+        (error instanceof Error ? error.message : "Could not save settings")
       );
+    } finally {
+      setSavingSettings(false);
     }
   }
 
@@ -227,17 +262,17 @@ export default function App() {
           </div>
         </div>
 
-        <footer className="system-footer">
+        <footer className="system-footer" role="status" aria-live="polite">
           <span
             className={
-              status === "Online"
+              footerStatus === "No API key" ? "status-dot warning" : status === "Online"
                 ? "status-dot online"
                 : "status-dot"
             }
           />
 
           <span>
-            {status}
+            {footerStatus}
           </span>
         </footer>
       </section>
@@ -373,9 +408,7 @@ export default function App() {
       {settingsOpen && (
         <div
           className="modal-backdrop"
-          onMouseDown={() => {
-            setSettingsOpen(false);
-          }}
+          onMouseDown={closeSettings}
         >
           <div
             className="modal"
@@ -396,19 +429,37 @@ export default function App() {
 
               <button
                 className="close-button"
-                onClick={() => {
-                  setSettingsOpen(false);
-                }}
+                onClick={closeSettings}
+                disabled={savingSettings}
               >
                 ×
               </button>
             </div>
 
             <label>
+              OpenRouter API key
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(event) => setApiKeyInput(event.target.value)}
+                placeholder={hasApiKey ? "Enter a replacement key" : "Enter your API key"}
+                autoComplete="new-password"
+                spellCheck={false}
+                disabled={savingSettings}
+                aria-describedby="api-key-help"
+              />
+            </label>
+            <p className="settings-help" id="api-key-help">
+              {hasApiKey ? "A key is saved. Leave blank to keep it." : "No API key is saved."}
+              {" "}Saved on the computer running Amadeus. Saving does not verify the key.
+            </p>
+
+            <label>
               LLM model
 
               <input
                 value={model}
+                disabled={savingSettings}
                 onChange={(event) => {
                   setModelName(event.target.value);
                 }}
@@ -416,12 +467,13 @@ export default function App() {
               />
             </label>
 
+            {settingsError && <p className="settings-error" role="alert">{settingsError}</p>}
+
             <div className="modal-actions">
               <button
                 className="ghost-button"
-                onClick={() => {
-                  setSettingsOpen(false);
-                }}
+                onClick={closeSettings}
+                disabled={savingSettings}
               >
                 Cancel
               </button>
@@ -429,8 +481,9 @@ export default function App() {
               <button
                 className="primary-button"
                 onClick={saveModel}
+                disabled={savingSettings || loading}
               >
-                Apply
+                {savingSettings ? "Saving..." : "Apply"}
               </button>
             </div>
           </div>
