@@ -8,6 +8,7 @@ from chat import (
     setLLMModel,
     getLLMModel,
     get_raw_memory,
+    SpecialInteraction,
 )
 
 from tts import generateVoice, play_sound
@@ -104,3 +105,12 @@ def getMemory():
     print("[Flask] /getMemory triggered")  
     msgs = get_raw_memory()
     return jsonify({"status":"ok","messages": msgs})
+
+# pre: Interaction number is given. e.g., 1,2,3
+# post: use SpecialInteraction() from chat to update accordingly
+@application.route("/doSpecialInteraction", methods=["POST"])
+def doSpecialInteraction():
+    data = request.get_json(silent=True)
+    interaction_value = data.get("interaction_value")
+    SpecialInteraction(interaction_value)
+    return jsonify({"status": "ok"})

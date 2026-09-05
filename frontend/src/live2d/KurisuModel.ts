@@ -8,6 +8,7 @@ export class KurisuModel extends CubismUserModel {
 
   private gl: WebGLRenderingContext;
   private textures: WebGLTexture[] = [];
+  private lastUpdateTime = 0;
 
   constructor(gl: WebGLRenderingContext) {
     super();
@@ -50,6 +51,8 @@ export class KurisuModel extends CubismUserModel {
     this.getRenderer().startUp(this.gl);
 
     await this.loadTextures();
+    await this.loadIdleMotion();
+    this.lastUpdateTime = performance.now();
 
     console.log("Kurisu model loaded successfully");
   }
@@ -212,12 +215,91 @@ export class KurisuModel extends CubismUserModel {
     });
   }
 
+  private async loadIdleMotion(): Promise<void> {
+    if (!this.modelSetting) {
+      throw new Error("Model settings are not initialized");
+    }
+
+    const motionFile =
+      this.modelSetting.getMotionFileName("Idle", 0);
+
+    if (!motionFile) {
+      throw new Error(
+        "No Idle motion is configured in kurisu.model3.json"
+      );
+    }
+
+    const motionPath = this.modelHomeDir + motionFile;
+    const response = await fetch(motionPath);
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load idle motion: ${response.status} ${motionPath}`
+      );
+    }
+
+    const buffer = await response.arrayBuffer();
+
+    // React may have unmounted the character during the fetch.
+    if (!this._motionManager) {
+      return;
+    }
+
+    const motion = this.loadMotion(
+      buffer,
+      buffer.byteLength,
+      "Idle"
+    );
+
+    if (!motion) {
+      throw new Error("Cubism could not create the idle motion");
+    }
+
+    const settings = this.modelSetting;
+
+    const eyeBlinkIds = Array.from(
+      { length: settings.getEyeBlinkParameterCount() },
+      (_, index) => settings.getEyeBlinkParameterId(index)
+    );
+
+    const lipSyncIds = Array.from(
+      { length: settings.getLipSyncParameterCount() },
+      (_, index) => settings.getLipSyncParameterId(index)
+    );
+
+    motion.setEffectIds(eyeBlinkIds, lipSyncIds);
+    motion.setLoop(true);
+    motion.setLoopFadeIn(false);
+    motion.setFadeInTime(0.3);
+    motion.setFadeOutTime(0.3);
+
+    // Priority 1 = idle. The manager owns and releases the motion.
+    this._motionManager.startMotionPriority(motion, true, 1);
+
+    console.log("Kurisu idle motion started:", motionPath);
+  }
+
+
   update(): void {
     const model = this.getModel();
 
-    if (!model) {
+    if (!model || !this._motionManager) {
       return;
     }
+
+    const now = performance.now();
+
+    // Limit jumps when returning from a background tab.
+    const deltaTimeSeconds =
+      this.lastUpdateTime === 0
+        ? 0
+        : Math.min((now - this.lastUpdateTime) / 1000, 0.1);
+
+    this.lastUpdateTime = now;
+
+    model.loadParameters();
+    this._motionManager.updateMotion(model, deltaTimeSeconds);
+    model.saveParameters();
 
     model.update();
   }

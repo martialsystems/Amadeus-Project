@@ -1,7 +1,7 @@
 import memory as store
 from llm import get_llm, reset_llm
-
 from pydantic import BaseModel, Field
+import random
 
 default_LLM_Model = store.DEFAULT_LLM_MODEL
 API_KEY = store.load_api_key()
@@ -148,6 +148,51 @@ def getOutputPacked(user_message: str) -> str:
     # Store what the user actually sees
     store.append_message("assistant", pack.assistant_reply_ENG)
     return pack
+
+
+
+# ---------- SPECIAL INTERACTIONS ---------- 
+
+INTERACTION_EVENTS = {
+    1: "[Interaction event: The user patted your chest.]",
+    2: "[Interaction event: The user touched your shoulder.]",
+    3: "[Interaction event: The user tapped your arm.]",
+}
+
+INTERACTION_RESPONSES = {
+    1: [
+        "Hey, you'll mess up my hair!",
+        "What was that for?",
+        "You're enjoying this, aren't you?",
+    ],
+    2: [
+        "Hm? What is it?",
+        "You have my attention.",
+        "Yes? Did you need something?",
+    ],
+    3: [
+        "You could just say my name.",
+        "Hey! I'm right here.",
+        "What's up?",
+    ],
+}
+
+# pre:
+# - interaction value represents int value of the corresponding interaction. e.g.,
+#   1 -> Special Touch (Chest)
+#   2 -> Normal Touch (Shoulder, arms... etc)
+#   3 -> Weird Touch (Leg)
+#
+# post:
+# - append in format: ("system", "[Interaction event: The user touched your shoulder.]")
+# - return the hard coded responses
+def SpecialInteraction(interaction_value: int) -> str:
+    event = INTERACTION_EVENTS.get(interaction_value)
+    response_variants = INTERACTION_RESPONSES.get(interaction_value)
+    response = random.choice(response_variants);
+    store.append_message("user", event)
+    store.append_message("assistant", response);    
+    return response;
 
 
 
