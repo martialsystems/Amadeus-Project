@@ -160,7 +160,7 @@ def getOutputPacked(user_message: str) -> str:
 
 INTERACTION_EVENTS = {
     1: "[Interaction event: The user patted your chest.]",
-    2: "[Interaction event: The user touched your shoulder.]",
+    2: "[Interaction event: The user patted your head.]",
     3: "[Interaction event: The user tapped your arm.]",
 }
 

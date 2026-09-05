@@ -15,6 +15,11 @@
         {
           "File": "KurisuSpecialTouch.motion3.json"
         }
+      ],
+      "PatReaction": [
+        {
+          "File": "KurisuHeadPat.motion3.json"
+        }
       ]
     },
     "Physics": "kurisu.physics.json",

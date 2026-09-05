@@ -738,7 +738,7 @@ Live2D static rendering       ✓
 Live2D model scaling          ✓
 Cubism shader integration     ✓
 Idle motion                   ✓
-Cubism physics                implementing
+Cubism physics                ✓
 Touch interaction             implementing
 Special touch reactions       implementing
 Prompting improvements        planned (high priority)
