@@ -159,45 +159,49 @@ def getOutputPacked(user_message: str) -> str:
 # ---------- SPECIAL INTERACTIONS ---------- 
 
 INTERACTION_EVENTS = {
-    1: "[Interaction event: The user patted your chest.]",
+    1: "[Interaction event: The user touched your shoulder.]",
     2: "[Interaction event: The user patted your head.]",
     3: "[Interaction event: The user tapped your arm.]",
 }
 
 INTERACTION_RESPONSES = {
     1: [
-        "Hey, you'll mess up my hair!",
-        "What was that for?",
-        "You're enjoying this, aren't you?",
+        {"text": "Hey, you'll mess up my hair!", "audio_url": None},
+        {"text": "What was that for?", "audio_url": None},
+        {"text": "You're enjoying this, aren't you?", "audio_url": None},
     ],
     2: [
-        "Hm? What is it?",
-        "You have my attention.",
-        "Yes? Did you need something?",
+        {"text": "Hm? What is it?", "audio_url": None},
+        {"text": "You have my attention.", "audio_url": None},
+        {"text": "Yes? Did you need something?", "audio_url": None},
     ],
     3: [
-        "You could just say my name.",
-        "Hey! I'm right here.",
-        "What's up?",
+        {"text": "You could just say my name.", "audio_url": None},
+        {"text": "Hey! I'm right here.", "audio_url": None},
+        {"text": "What's up?", "audio_url": None},
     ],
 }
 
 # pre:
 # - interaction value represents int value of the corresponding interaction. e.g.,
-#   1 -> Special Touch (Chest)
-#   2 -> Normal Touch (Shoulder, arms... etc)
-#   3 -> Weird Touch (Leg)
+#   1 -> Shoulder touch
+#   2 -> Head pat
+#   3 -> Arm poke
 #
 # post:
 # - append in format: ("system", "[Interaction event: The user touched your shoulder.]")
 # - return the hard coded responses
-def SpecialInteraction(interaction_value: int) -> str:
+def SpecialInteraction(interaction_value: int) -> dict:
     event = INTERACTION_EVENTS.get(interaction_value)
     response_variants = INTERACTION_RESPONSES.get(interaction_value)
-    response = random.choice(response_variants);
+    if event is None or not response_variants:
+        raise ValueError("Unknown interaction")
+    # Select the text AND recording together, never independently.
+    variant = random.choice(response_variants)
+    response = variant["text"]
     store.append_message("user", event)
     store.append_message("assistant", response);    
-    return response;
+    return {"response": response, "audio_url": variant.get("audio_url")}
 
 
 

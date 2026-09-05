@@ -20,6 +20,11 @@
         {
           "File": "KurisuHeadPat.motion3.json"
         }
+      ],
+      "Talk": [
+        {
+          "File": "KurisuTalkingBase.motion3.json"
+        }
       ]
     },
     "Physics": "kurisu.physics.json",
@@ -29,7 +34,9 @@
     {
       "Target": "Parameter",
       "Name": "LipSync",
-      "Ids": []
+      "Ids": [
+        "ParamMouthOpenY"
+      ]
     },
     {
       "Target": "Parameter",

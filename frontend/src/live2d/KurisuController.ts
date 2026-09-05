@@ -202,6 +202,14 @@ export class KurisuController {
     return this.destroyed ? "not-ready" : this.model?.playMotion(group) ?? "not-ready";
   }
 
+  setSpeaking(speaking: boolean): void {
+    if (!this.destroyed) this.model?.setSpeaking(speaking);
+  }
+
+  setLipSyncValue(value: number): void {
+    if (!this.destroyed) this.model?.setLipSyncValue(value);
+  }
+
   destroy(): void {
     this.destroyed = true;
 

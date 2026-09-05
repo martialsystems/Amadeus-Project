@@ -4,6 +4,11 @@ export type MemoryMessage = {
   created_at?: string;
 };
 
+export type MessageReply = {
+  response: string;
+  speechUrl?: string;
+};
+
 const API_BASE = "http://127.0.0.1:5050";
 
 export async function getApiKeyStatus(): Promise<boolean> {
@@ -33,7 +38,7 @@ async function parseResponse(response: Response) {
   return data;
 }
 
-export async function sendMessage(userInput: string): Promise<string> {
+export async function sendMessage(userInput: string): Promise<MessageReply> {
   const response = await fetch(`${API_BASE}/`, {
     method: "POST",
     headers: {
@@ -45,7 +50,17 @@ export async function sendMessage(userInput: string): Promise<string> {
   });
 
   const data = await parseResponse(response);
-  return data.response;
+  if (typeof data.response !== "string") {
+    throw new Error("Backend returned an invalid response");
+  }
+
+  return {
+    response: data.response,
+    speechUrl:
+      typeof data.speech_id === "string"
+        ? `${API_BASE}/speech/${encodeURIComponent(data.speech_id)}`
+        : undefined,
+  };
 }
 
 export async function getMemory(): Promise<MemoryMessage[]> {
@@ -92,7 +107,7 @@ export async function setModel(model: string): Promise<void> {
   await parseResponse(response);
 }
 
-export async function sendInteraction(interactionValue: number): Promise<string> {
+export async function sendInteraction(interactionValue: number): Promise<MessageReply> {
   const response = await fetch(`${API_BASE}/doSpecialInteraction`, {
     method: "POST",
     headers: {
@@ -104,5 +119,11 @@ export async function sendInteraction(interactionValue: number): Promise<string>
   });
 
   const data = await parseResponse(response);
-  return data.response;
+  if (typeof data.response !== "string") throw new Error("Invalid interaction response");
+  return {
+    response: data.response,
+    // /audio/... belongs to the frontend's public directory, not Flask.
+    speechUrl: typeof data.audio_url === "string" && data.audio_url.startsWith("/audio/")
+      ? data.audio_url : undefined,
+  };
 }

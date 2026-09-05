@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 from chat import (
@@ -12,13 +12,18 @@ from chat import (
     SpecialInteraction,
 )
 
-from tts import streamVoice
+from tts import streamVoiceChunks
 
-from flask_cors import CORS
 import threading
+import uuid
+import time
+from itertools import chain
 
 application = Flask(__name__)
 CORS(application)
+
+_speech_requests: dict[str, tuple[float, str]] = {}
+_speech_requests_lock = threading.Lock()
 
 # pre:
 # - JSON body contains an "key" field
@@ -65,16 +70,51 @@ def request_message():
     print("\n[Flask]: ENG:", pack.assistant_reply_ENG)
     print("[Flask]: JPS:", pack.assistant_reply_JPS)
     
-    # Synthesize and play Japanese sentence-by-sentence in the background.
-    # The English response can return immediately instead of waiting for all TTS.
-    threading.Thread(
-        target=streamVoice,
-        args=(pack.assistant_reply_JPS,),
-        name="amadeus-tts-stream",
-        daemon=True,
-    ).start()
+    # Give the browser a single-use speech id. The browser then opens the
+    # streaming WAV endpoint, so the same sound that reaches the speakers also
+    # drives the Live2D analyser/lip sync.
+    speech_id = uuid.uuid4().hex
+    with _speech_requests_lock:
+        now = time.monotonic()
+        for expired in [key for key, (created, _) in _speech_requests.items() if now - created > 300]:
+            _speech_requests.pop(expired, None)
+        _speech_requests[speech_id] = (now, pack.assistant_reply_JPS)
+        while len(_speech_requests) > 20:
+            _speech_requests.pop(next(iter(_speech_requests)))
 
-    return jsonify({"response": pack.assistant_reply_ENG})
+    return jsonify({
+        "response": pack.assistant_reply_ENG,
+        "speech_id": speech_id,
+    })
+
+@application.route("/speech/<speech_id>", methods=["GET"])
+def speech(speech_id):
+    if request.method == "HEAD":
+        return "", 405
+    with _speech_requests_lock:
+        item = _speech_requests.pop(speech_id, None)
+
+    if item is None or time.monotonic() - item[0] > 300:
+        return jsonify({"message": "Speech request not found"}), 404
+
+    chunks = streamVoiceChunks(item[1])
+    try:
+        first = next(chunks)
+    except Exception:
+        chunks.close()
+        return jsonify({"message": "Speech generation failed"}), 502
+
+    def generate():
+        try:
+            yield from chain((first,), chunks)
+        finally:
+            chunks.close()
+
+    response = Response(generate(), mimetype="audio/wav")
+    response.headers["Cache-Control"] = "no-store"
+    response.call_on_close(chunks.close)
+    return response
+
 
 # pre
 # post:
@@ -130,10 +170,11 @@ def getMemory():
 @application.route("/doSpecialInteraction", methods=["POST"])
 def doSpecialInteraction():
     data = request.get_json(silent=True)
-    interaction_value = data.get("interaction_value")
-    response = SpecialInteraction(interaction_value)
-
-    return jsonify({
-    "status": "ok",
-    "response": response,
-    })
+    interaction_value = data.get("interaction_value") if isinstance(data, dict) else None
+    if type(interaction_value) is not int:
+        return jsonify({"message": "Interaction must be an integer"}), 400
+    try:
+        reply = SpecialInteraction(interaction_value)
+    except ValueError:
+        return jsonify({"message": "Unknown interaction"}), 400
+    return jsonify({"status": "ok", **reply})

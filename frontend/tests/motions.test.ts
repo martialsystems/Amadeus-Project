@@ -11,6 +11,10 @@ const arrayBuffer = (buffer: Uint8Array) => buffer.buffer.slice(buffer.byteOffse
 const json = JSON.parse(await readFile(new URL("kurisu.model3.json", base), "utf8"));
 // A new group must work without adding methods or fields to the player.
 json.FileReferences.Motions.Wave = json.FileReferences.Motions.TapReaction;
+const expectedMotionRequests = Object.values(json.FileReferences.Motions).reduce(
+  (count: number, variants: any) => count + variants.length,
+  0
+);
 const settingsBytes = new TextEncoder().encode(JSON.stringify(json));
 const originalFetch = globalThis.fetch;
 let requests = 0;
@@ -42,7 +46,7 @@ const advance = (seconds: number) => {
 try {
   assert.equal(player.playMotion("TapReaction"), "not-ready");
   await player.load(settings, "http://assets/", new AbortController().signal);
-  assert.equal(requests, 3, "all groups are discovered and preloaded");
+  assert.equal(requests, expectedMotionRequests, "all groups are discovered and preloaded");
   assert.equal(player.playMotion("Unknown"), "missing");
   advance(1);
   const angle = CubismFramework.getIdManager().getId("Param4");
@@ -57,7 +61,23 @@ try {
   advance(4);
   assert.equal(player.playMotion("Wave"), "started", "new groups need no player changes");
   advance(4);
-  assert.equal(requests, 3, "clicks never fetch motion files");
+  assert.equal(requests, expectedMotionRequests, "clicks never fetch motion files");
+  const internal = player as any;
+  player.setSpeaking(true);
+  advance(7);
+  assert.equal(internal.manager.isFinished(), false, "talk continues beyond one cycle");
+  assert.equal(player.playMotion("PatReaction"), "started");
+  assert.equal(player.playMotion("TapReaction"), "busy", "reactions cannot interrupt each other");
+  player.setSpeaking(false);
+  assert.equal(internal.manager.getCurrentPriority(), 2, "ending speech preserves active reaction");
+  advance(20);
+  assert.equal(internal.manager.getCurrentPriority(), 1, "reaction returns to baseline");
+  player.setSpeaking(true);
+  assert.equal(player.playMotion("PatReaction"), "started");
+  advance(20);
+  assert.equal(internal.speaking, true);
+  assert.equal(internal.manager.getCurrentPriority(), 1, "reaction returns to talk while speaking");
+  player.setSpeaking(false);
   player.release();
   player.release();
   assert.equal(player.playMotion("Wave"), "not-ready");

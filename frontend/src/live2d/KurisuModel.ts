@@ -1,4 +1,5 @@
 import { CubismModelSettingJson } from "@framework/cubismmodelsettingjson";
+import { CubismFramework } from "@framework/live2dcubismframework";
 import { CubismMatrix44 } from "@framework/math/cubismmatrix44";
 import { CubismUserModel } from "@framework/model/cubismusermodel";
 import { MotionPlayer } from "./MotionPlayer";
@@ -13,6 +14,9 @@ export class KurisuModel extends CubismUserModel {
   private readonly textures: WebGLTexture[] = [];
   private released = false;
   private ready = false;
+  private speaking = false;
+  private lipSyncValue = 0;
+  private readonly mouthOpenId = CubismFramework.getIdManager().getId("ParamMouthOpenY");
 
   constructor(private readonly gl: WebGLRenderingContext) {
     super();
@@ -63,11 +67,28 @@ export class KurisuModel extends CubismUserModel {
     return this.ready ? this.motions.playMotion(group) : "not-ready";
   }
 
+  setSpeaking(speaking: boolean): void {
+    this.speaking = speaking;
+    this.motions.setSpeaking(speaking);
+
+    if (!speaking) {
+      this.lipSyncValue = 0;
+      if (this.ready) this.getModel().setParameterValueById(this.mouthOpenId, 0);
+    }
+  }
+
+  setLipSyncValue(value: number): void {
+    this.lipSyncValue = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+  }
+
   update(deltaSeconds: number): void {
     if (!this.ready) return;
     const model = this.getModel();
     model.loadParameters();
     this.motions.update(model, deltaSeconds);
+    if (this.speaking) {
+      model.setParameterValueById(this.mouthOpenId, this.lipSyncValue);
+    }
     model.update();
   }
 
@@ -87,6 +108,8 @@ export class KurisuModel extends CubismUserModel {
     if (this.released) return;
     this.released = true;
     this.ready = false;
+    this.speaking = false;
+    this.lipSyncValue = 0;
     this.loading.abort();
     this.motions.release();
     super.release();

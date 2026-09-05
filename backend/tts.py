@@ -115,6 +115,32 @@ def _stream_audio(text: str, play: bool):
             temp_path.unlink()
 
 
+def streamVoiceChunks(text: str):
+    """Yield GPT-SoVITS WAV chunks for browser playback while saving a copy."""
+    with _speech_lock:
+        OUT_WAV.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = OUT_WAV.with_suffix(".browser.tmp")
+
+        try:
+            with requests.post(
+                f"{GPTSOVITS_API_URL}/tts",
+                json=_request_payload(text),
+                stream=True,
+                timeout=(10, 120),
+            ) as response:
+                response.raise_for_status()
+                with temp_path.open("wb") as output:
+                    for chunk in response.iter_content(chunk_size=4096):
+                        if not chunk:
+                            continue
+                        output.write(chunk)
+                        yield chunk
+            temp_path.replace(OUT_WAV)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
+
+
 def streamVoice(text: str):
     """Stream native GPT-SoVITS audio directly to one continuous player."""
     with _speech_lock:

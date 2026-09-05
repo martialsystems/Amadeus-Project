@@ -86,6 +86,13 @@ export default function App() {
       return;
     }
 
+    // Unlock Web Audio while this function still runs from a real user gesture.
+    characterRef.current?.stopSpeech();
+    const speechReady = characterRef.current?.prepareSpeech().then(
+      () => true,
+      () => false
+    );
+
     setMessages((current) => [
       ...current,
       {
@@ -105,11 +112,18 @@ export default function App() {
         ...current,
         {
           role: "assistant",
-          content: reply,
+          content: reply.response,
         },
       ]);
 
       setStatus("Online");
+      if (reply.speechUrl && await speechReady) {
+        void characterRef.current?.playSpeech(reply.speechUrl).catch((error) => {
+          setStatus(error instanceof Error ? error.message : "Speech playback failed");
+        });
+      } else if (reply.speechUrl) {
+        setStatus("Audio could not start. Check browser audio permissions and send again.");
+      }
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -197,6 +211,11 @@ export default function App() {
       return;
     }
 
+    // Unlock audio during the click; the recording URL arrives with the reply.
+    const speechReady = characterRef.current?.prepareSpeech().then(
+      () => true,
+      () => false
+    );
     setLoading(true);
 
     try {
@@ -206,11 +225,18 @@ export default function App() {
         ...current,
         {
           role: "assistant",
-          content: reply,
+          content: reply.response,
         },
       ]);
 
       setStatus("Online");
+      if (reply.speechUrl && await speechReady) {
+        void characterRef.current?.playSpeech(reply.speechUrl).catch((error) => {
+          setStatus(error instanceof Error ? error.message : "Interaction audio failed");
+        });
+      } else if (reply.speechUrl) {
+        setStatus("Audio could not start. Check browser audio permissions and try again.");
+      }
     } catch (error) {
       setStatus(
         error instanceof Error
@@ -241,7 +267,7 @@ export default function App() {
           <div className="scanline" />
 
           <div className="character-viewport">
-            <Live2DCharacter ref={characterRef} />
+            <Live2DCharacter ref={characterRef} onSpeechError={setStatus} />
 
             {(Object.keys(interactions) as InteractionName[]).map((name) => {
               const interaction = interactions[name];

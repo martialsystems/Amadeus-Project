@@ -11,8 +11,12 @@ export class MotionPlayer {
   private readonly motions = new Map<string, CubismMotion[]>();
   private ready = false;
   private released = false;
+  private speaking = false;
 
-  constructor(private readonly idleGroup = "Idle") {
+  constructor(
+    private readonly idleGroup = "Idle",
+    private readonly talkGroup = "Talk"
+  ) {
     // Motions may contain timeline events even when the app does not use them.
     this.manager.setEventCallback(() => {});
   }
@@ -49,7 +53,7 @@ export class MotionPlayer {
         if (!motion) throw new Error(`Could not create motion: ${file}`);
         variants.push(motion);
         motion.setEffectIds(eyeBlinkIds, lipSyncIds);
-        motion.setLoop(group === this.idleGroup);
+        motion.setLoop(group === this.idleGroup || group === this.talkGroup);
         motion.setLoopFadeIn(false);
         const fadeIn = settings.getMotionFadeInTimeValue(group, index);
         const fadeOut = settings.getMotionFadeOutTimeValue(group, index);
@@ -59,27 +63,38 @@ export class MotionPlayer {
     }
 
     this.ready = true;
-    this.startIdle();
+    this.startBaseline();
   }
 
   playMotion(group: string, index = 0): PlayMotionResult {
     if (!this.ready || this.released) return "not-ready";
     const motion = this.motions.get(group)?.[index];
     if (!motion) return "missing";
-    // All non-idle groups are one-shot reactions. Ignore clicks while reacting.
+    const baseline = group === this.idleGroup || group === this.talkGroup;
+    const priority = baseline ? 1 : 2;
     if (this.manager.getCurrentPriority() > 1) return "busy";
-    this.manager.startMotionPriority(motion, false, group === this.idleGroup ? 1 : 2);
+    this.manager.startMotionPriority(motion, false, priority);
     return "started";
+  }
+
+  setSpeaking(speaking: boolean): void {
+    if (this.speaking === speaking) return;
+    this.speaking = speaking;
+    if (!this.ready || this.released) return;
+
+    if (this.manager.getCurrentPriority() <= 1) this.startBaseline();
   }
 
   update(model: CubismModel, deltaSeconds: number): void {
     if (!this.ready || this.released) return;
-    if (this.manager.isFinished()) this.startIdle();
+    if (this.manager.isFinished()) this.startBaseline();
     this.manager.updateMotion(model, deltaSeconds);
   }
 
-  private startIdle(): void {
-    const motion = this.motions.get(this.idleGroup)?.[0];
+  private startBaseline(): void {
+    const motion =
+      (this.speaking ? this.motions.get(this.talkGroup)?.[0] : null) ??
+      this.motions.get(this.idleGroup)?.[0];
     if (motion) this.manager.startMotionPriority(motion, false, 1);
   }
 
@@ -87,6 +102,7 @@ export class MotionPlayer {
     if (this.released) return;
     this.released = true;
     this.ready = false;
+    this.speaking = false;
     this.manager.release();
     for (const variants of this.motions.values()) {
       for (const motion of variants) motion.release();
