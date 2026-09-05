@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Live2DCharacter from "./components/Live2DCharacter";
+import type { Live2DCharacterHandle } from "./components/Live2DCharacter";
 import {
   getCurrentModel,
   getMemory,
@@ -19,6 +20,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const characterRef = useRef<Live2DCharacterHandle>(null);
 
   useEffect(() => {
     void initialize();
@@ -149,10 +151,10 @@ export default function App() {
   async function handleInteraction(interactionValue: number) {
     if (loading) return;
 
-    if (interactionValue === 2) {
+    if (interactionValue === 1) {
       characterRef.current?.playTapReaction();
     }
-    
+
     setLoading(true);
 
     try {
@@ -196,7 +198,7 @@ export default function App() {
         <div className="character-stage">
           <div className="scanline" />
 
-          <Live2DCharacter />
+          <Live2DCharacter ref={characterRef} />
         </div>
 
         <footer className="system-footer">
