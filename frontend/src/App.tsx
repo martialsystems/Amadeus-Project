@@ -205,24 +205,26 @@ export default function App() {
         <div className="character-stage">
           <div className="scanline" />
 
-          <Live2DCharacter ref={characterRef} />
+          <div className="character-viewport">
+            <Live2DCharacter ref={characterRef} />
 
-          {(Object.keys(interactions) as InteractionName[]).map((name) => {
-            const interaction = interactions[name];
-            return (
-              <button
-                key={name}
-                type="button"
-                className="touch-button"
-                style={interaction.position}
-                aria-label={interaction.label}
-                disabled={loading}
-                onClick={() => void handleInteraction(name)}
-              >
-                {interaction.label}
-              </button>
-            );
-          })}
+            {(Object.keys(interactions) as InteractionName[]).map((name) => {
+              const interaction = interactions[name];
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  className="touch-button"
+                  style={interaction.position}
+                  aria-label={interaction.label}
+                  disabled={loading}
+                  onClick={() => void handleInteraction(name)}
+                >
+                  {interaction.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <footer className="system-footer">
@@ -437,4 +439,3 @@ export default function App() {
     </main>
   );
 }
-

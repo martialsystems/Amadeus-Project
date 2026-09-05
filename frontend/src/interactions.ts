@@ -4,8 +4,9 @@ export const interactions = {
     backendId: 1,
     motion: "TapReaction",
     label: "Touch shoulder",
-    // Percentages are relative to the character viewport.
-    position: { top: "45%", left: "50%", width: "90px", height: "60px" },
+    // All four values use the shared 600 x 800 character design space.
+    // 15% x 7.5% corresponds to 90 x 60 design pixels.
+    position: { top: "45%", left: "50%", width: "15%", height: "7.5%" },
   },
 };
 

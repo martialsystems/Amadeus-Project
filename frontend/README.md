@@ -18,7 +18,7 @@ Run `npm ci` once, then `npm run dev`. `npm run build` checks the app's types an
      backendId: 4,
      motion: "Wave",
      label: "Wave",
-     position: { top: "30%", left: "65%", width: "70px", height: "70px" },
+     position: { top: "30%", left: "65%", width: "12%", height: "9%" },
    },
    ```
 
@@ -40,6 +40,14 @@ The generic API is `characterRef.current?.playMotion("Wave")`. There is no need 
 Model destruction aborts outstanding asset loads. This also supports React Strict Mode's development mount/cleanup cycle. Physics and audio synchronization are separate future features.
 
 ## Verification
+
+### Responsive layout
+
+The character viewport is a 3:4 design space (600 x 800), uniformly contained in the stage using CSS size-container units. The canvas and interaction buttons share this box; keep all hit-area positions AND sizes as percentages. Extra panel space is left around the viewport rather than stretching the character. This preserves placement across window sizes but does not track body parts during animation.
+
+Desktop character width is capped at 720px. At 850px and below, the panels stack and chat scrolls internally. The controller observes canvas size changes and refreshes resolution when display pixel density changes.
+
+Visual check before release: resize through 1920x1080, 2560x1440, 3440x1440, 1024x600, 850x900, and 390x844; also test browser zoom and moving between different-density displays. Confirm no horizontal overflow, a reachable composer, undistorted rendering, and shoulder alignment. Temporarily color the hit area for inspection; its position may need one-time calibration in the new design space.
 
 Run `npm test` for motion and cleanup checks against the bundled Cubism Core and real character assets. These tests need neither Flask nor a browser. They cover preloading, repeated reactions, automatic idle recovery, adding a new motion group, and cancellation during loading. Use `npm run build` for the production build.
 

@@ -14,6 +14,8 @@ export class KurisuController {
   private animationFrame = 0;
   private destroyed = false;
   private lastFrameTime = 0;
+  private resizeObserver: ResizeObserver | null = null;
+  private pixelRatio = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -44,6 +46,9 @@ export class KurisuController {
     this.gl = gl;
 
     this.resize();
+
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(this.canvas);
 
     window.addEventListener(
       "resize",
@@ -77,6 +82,7 @@ export class KurisuController {
 
     const dpr =
       window.devicePixelRatio || 1;
+    this.pixelRatio = dpr;
 
     const width = Math.max(
       1,
@@ -122,7 +128,8 @@ export class KurisuController {
 
     const gl = this.gl;
 
-    this.resize();
+    // Container changes are observed; also handle moving between displays.
+    if (this.pixelRatio !== (window.devicePixelRatio || 1)) this.resize();
 
     gl.viewport(
       0,
@@ -154,7 +161,7 @@ export class KurisuController {
       this.canvas.width /
       this.canvas.height;
 
-    const characterScale = 1.15;
+    const characterScale = 1.5;
 
     if (aspect > 1) {
       matrix.scale(
@@ -201,6 +208,8 @@ export class KurisuController {
     cancelAnimationFrame(
       this.animationFrame
     );
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
 
     window.removeEventListener(
       "resize",
