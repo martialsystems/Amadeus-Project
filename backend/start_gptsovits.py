@@ -14,8 +14,8 @@ def main():
         raise RuntimeError(f"GPT-SoVITS not found at: {GPT_ROOT}")
     if not (GPT_ROOT / "config.py").exists():
         raise RuntimeError(f"config.py not found at: {GPT_ROOT / 'config.py'}")
-    if not (GPT_PKG / "inference_webui.py").exists():
-        raise RuntimeError(f"inference_webui.py not found at: {GPT_PKG / 'inference_webui.py'}")
+    if not (GPT_ROOT / "api_v2.py").exists():
+        raise RuntimeError(f"api_v2.py not found at: {GPT_ROOT / 'api_v2.py'}")
 
     # Ensure BOTH import roots are visible:
     # - GPT_ROOT: allows `import config`
@@ -26,10 +26,10 @@ def main():
     # GPT-SoVITS expects to run from repo root
     os.chdir(GPT_ROOT)
 
-    print("[Amadeus] Starting GPT-SoVITS via Python entrypoint...")
+    print("[Amadeus] Starting GPT-SoVITS native API...")
 
     # Run script
-    runpy.run_path(str(GPT_PKG / "inference_webui.py"), run_name="__main__")
+    runpy.run_path(str(GPT_ROOT / "api_v2.py"), run_name="__main__")
 
 if __name__ == "__main__":
     main()

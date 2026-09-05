@@ -1,120 +1,155 @@
-import subprocess
+import os
 import platform
+import shutil
+import subprocess
+import threading
 from pathlib import Path
-from gradio_client import Client, handle_file
 
-#NOTES: Make sure we're running the flask server from within the Amadeus directory, or else this will break! 
+import requests
 
-REF_WAV = Path("assets/reference_audio/kurisu10s.wav").resolve()
-OUT_WAV = Path("generated/generated.wav").resolve()
+# Resolve paths from this file so the backend works regardless of cwd.
+BACKEND_DIR = Path(__file__).resolve().parent
+REF_WAV = BACKEND_DIR / "assets" / "reference_audio" / "kurisu10s.wav"
+OUT_WAV = BACKEND_DIR / "generated" / "generated.wav"
 REF_TXT = "ん? ほっと来てくれませんか?ん? ふざけてないでちょっと来てくださいアニカって何ですか?人激の悪い私は"
 
-# ======================
-# GPT-SoVITS server
-# ======================
-GPTSOVITS_URL = "http://127.0.0.1:9872"
+GPTSOVITS_API_URL = os.getenv("GPTSOVITS_API_URL", "http://127.0.0.1:9880")
+STREAMING_MODE = int(os.getenv("GPTSOVITS_STREAMING_MODE", "1"))
+_speech_lock = threading.Lock()
 
-_client = None
 
-def _get_client():
-    global _client
-    if _client is None:
-        _client = Client(GPTSOVITS_URL)
+def _request_payload(text: str) -> dict:
+    if not REF_WAV.exists():
+        raise FileNotFoundError(f"Reference audio not found: {REF_WAV}")
+    return {
+        "text": text,
+        "text_lang": "ja",
+        "ref_audio_path": str(REF_WAV),
+        "prompt_text": REF_TXT,
+        "prompt_lang": "ja",
+        "text_split_method": "cut5",
+        "batch_size": 1,
+        "batch_threshold": 0.75,
+        "split_bucket": True,
+        "speed_factor": 1.0,
+        "fragment_interval": 0.15,
+        "seed": -1,
+        "media_type": "wav",
+        "parallel_infer": True,
+        "repetition_penalty": 1.35,
+        "sample_steps": 16,
+        "super_sampling": False,
+        "streaming_mode": STREAMING_MODE,
+        "overlap_length": 2,
+        "min_chunk_length": 16,
+    }
 
-        # optional; fine to keep
-        _client.predict(api_name="/change_choices")
 
-        # Select SoVITS v2ProPlus
-        _client.predict(
-            "Use v2ProPlus base model directly without training!",
-            "Japanese",   # prompt_language (can be anything valid)
-            "Japanese",   # text_language
-            api_name="/change_sovits_weights"
+def _start_stream_player():
+    """Start a player that accepts a WAV header followed by PCM bytes."""
+    ffplay = shutil.which("ffplay")
+    if ffplay:
+        return subprocess.Popen(
+            [ffplay, "-nodisp", "-autoexit", "-loglevel", "error", "-i", "-"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
 
-        # Keep GPT v3 preset if that’s what your UI supports
-        _client.predict(
-            "Use v3 base model directly without training!",
-            api_name="/change_gpt_weights"
+    mpv = shutil.which("mpv")
+    if mpv:
+        return subprocess.Popen(
+            [mpv, "--no-video", "--really-quiet", "-"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-        print("[GPT-SoVITS] Using SoVITS:", "Use v2ProPlus base model directly without training!")
-        print("[GPT-SoVITS] Using GPT:", "Use v3 base model directly without training!")
+
+    print("[AmadeusSpeak] No ffplay or mpv found; saving audio and playing after generation.")
+    return None
 
 
-    return _client
+def _finish_stream_player(player):
+    if player is None:
+        return
+    try:
+        if player.stdin:
+            player.stdin.close()
+        player.wait(timeout=30)
+    except (BrokenPipeError, OSError, subprocess.TimeoutExpired):
+        try:
+            player.kill()
+        except OSError:
+            pass
+
+
+def _stream_audio(text: str, play: bool):
+    OUT_WAV.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = OUT_WAV.with_suffix(".streaming.tmp")
+    player = _start_stream_player() if play else None
+
+    try:
+        with requests.post(
+            f"{GPTSOVITS_API_URL}/tts",
+            json=_request_payload(text),
+            stream=True,
+            timeout=None,
+        ) as response:
+            response.raise_for_status()
+            with temp_path.open("wb") as output:
+                for chunk in response.iter_content(chunk_size=4096):
+                    if not chunk:
+                        continue
+                    output.write(chunk)
+                    if player is not None and player.stdin is not None:
+                        try:
+                            player.stdin.write(chunk)
+                            player.stdin.flush()
+                        except (BrokenPipeError, OSError):
+                            _finish_stream_player(player)
+                            player = None
+        temp_path.replace(OUT_WAV)
+    finally:
+        _finish_stream_player(player)
+        if temp_path.exists():
+            temp_path.unlink()
+
+
+def streamVoice(text: str):
+    """Stream native GPT-SoVITS audio directly to one continuous player."""
+    with _speech_lock:
+        _stream_audio(text, play=True)
 
 
 def generateVoice(text: str):
-    client = _get_client()
+    """Generate a complete WAV without starting playback."""
+    with _speech_lock:
+        _stream_audio(text, play=False)
 
-    how_to_cut = "Slice by every punct"  # <-- THIS is the WebUI slicing dropdown
 
-    wav_path = client.predict(
-        handle_file(str(REF_WAV)),  # ref_wav_path
-        REF_TXT,                    # prompt_text
-        "Japanese",                 # prompt_language
-        text,                       # text
-        "Japanese",                 # text_language
-        how_to_cut,                 # how_to_cut  ✅ slicing
-        5,                          # top_k
-        0.7,                        # top_p
-        1.0,                        # temperature
-        False,                      # ref_free
-        1.0,                        # speed
-        False,                      # if_freeze
-        [],                         # inp_refs (or None)
-        16,                         # sample_steps  (note: your API says Radio '4','8','16','32' — int usually works but str is safest)
-        True,                       # if_sr
-        0.15,                       # pause_second
-        api_name="/get_tts_wav"
-    )
-
-    OUT_WAV.write_bytes(Path(wav_path).read_bytes())
+def _play_wav_path(wav_path: Path):
+    path = str(wav_path.resolve())
+    system = platform.system()
+    try:
+        if system == "Darwin":
+            subprocess.run(["afplay", path], check=False)
+        elif system == "Windows":
+            subprocess.run([
+                "powershell", "-NoProfile", "-Command",
+                f'(New-Object Media.SoundPlayer "{path}").PlaySync();',
+            ], check=False)
+        else:
+            for command in (
+                ["paplay", path],
+                ["aplay", path],
+                ["ffplay", "-nodisp", "-autoexit", path],
+            ):
+                if shutil.which(command[0]):
+                    subprocess.run(command, check=False)
+                    break
+    except Exception as error:
+        print(f"[AmadeusSpeak] play_sound failed: {error}")
 
 
 def play_sound():
-    wav_path = str(OUT_WAV.resolve())
-    system = platform.system()
-
-    try:
-        if system == "Darwin":
-            subprocess.run(["afplay", wav_path], check=False)
-
-        elif system == "Windows":
-            subprocess.run([
-                "powershell",
-                "-NoProfile",
-                "-Command",
-                f'(New-Object Media.SoundPlayer "{wav_path}").PlaySync();'
-            ], check=False)
-
-        else:
-            for cmd in (
-                ["paplay", wav_path],
-                ["aplay", wav_path],
-                ["ffplay", "-nodisp", "-autoexit", wav_path],
-            ):
-                try:
-                    subprocess.run(cmd, check=False)
-                    break
-                except FileNotFoundError:
-                    continue
-
-    except Exception as e:
-        print(f"[AmadeusSpeak] play_sound failed: {e}")
-
-
-#This breaks stuff!
-#generateVoice("ああっ。本当にそんなこと軽々しく言わないでください。声が震えます。私の仕事がどれだけ難しくなるか分かっていますか。顔が真っ赤になります。もしそれが本当のお気持ちなら。深呼吸をします。私も同じです。よし、言いました。さあ、私が完全に取り乱す前にテストを続けてください。")
-# Aa. Hontō ni sonna koto karugarushiku iwanaide kudasai. Koe ga furue masu. 
-# Watashi no shigoto ga doredake muzukashiku naru ka wakatte imasu ka. Kao ga makka ni narimasu. 
-# Moshi sore ga hontō no okimochi nara. Shinkokyū o shimasu. Watashi mo onaji desu. Yoshi, iimashita. 
-# Sā, watashi ga kanzen ni torimidashite shimau mae ni tesuto o tsuzukete kudasai.
-
-
-#generateVoice("あら、今日はずいぶんせっついてくるのね。えっと、まず研究所に寄ってもいいわ。マユリが最近の裁縫作品を見せたいって言ってたから。そのあとで、少し休憩しましょう。")
-#generateVoice("あんた…！なんでいつも私が仕事に集中してる時にそんなこと言うのよ…？私だって、会いたかったんだからね…これで満足")
-#generateVoice("その…神経科学の論文は残ってるんだけど…でも…一本くらいなら…変な映画はやめてね、わかった？")
-#プロジェクトは待てるけど、睡眠は待てないよ。電源を切らせないでくれよ。
-#This does not breaks stuff! 
-#generateVoice("あら、今日はずいぶんせっついてくるのね。えっと、まず研究所に寄ってもいいわ。マユリが最近の裁縫作品を見せたいって言ってたから。そのあとで少し休憩しましょう。")
+    _play_wav_path(OUT_WAV)

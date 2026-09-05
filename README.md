@@ -753,6 +753,48 @@ Longer-term ideas include richer character interaction, additional activities su
 
 # Changelog
 
+## Native GPT-SoVITS Streaming TTS — September 5, 2026
+
+### Native API v2 Integration
+
+Replaced the Gradio `/get_tts_wav` path with GPT-SoVITS's native REST API v2.
+
+The backend now connects to:
+
+```text
+http://127.0.0.1:9880/tts
+```
+
+and requests `streaming_mode=1`, allowing GPT-SoVITS to return Japanese audio fragments while the response is still being synthesized.
+
+### Continuous Audio Playback
+
+`backend/tts.py` now:
+
+- Sends the reference audio and Japanese prompt configuration to the native API.
+- Consumes the chunked WAV response incrementally.
+- Feeds all chunks into one continuous `ffplay` or `mpv` process.
+- Preserves a complete `generated/generated.wav` copy after streaming.
+- Falls back to saving and playing the completed file when no streaming player is installed.
+
+Reference paths are resolved relative to `backend/`, including:
+
+```text
+backend/assets/reference_audio/kurisu10s.wav
+```
+
+### Backend Pipeline Change
+
+The Flask message route starts `streamVoice()` in a background thread and returns the English response immediately. Japanese audio begins when the first native API chunk arrives instead of waiting for the entire response.
+
+### Launcher Update
+
+`backend/start_gptsovits.py` now starts `api_v2.py`. The automatic launcher waits on port `9880` and uses the `GPTSoVITS` Conda environment.
+
+A standalone test on the Mac CPU received its first audio chunk after approximately 2.7 seconds and completed in approximately 4.17 seconds.
+
+---
+
 ## Live2D Cubism Web Integration — September 4, 2026
 
 ### Official Cubism SDK Integration

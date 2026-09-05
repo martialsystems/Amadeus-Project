@@ -19,7 +19,7 @@ GPT_DIR = PROJECT_ROOT / "GPT-SoVITS"
 RUNTIME_DIR = PROJECT_ROOT / ".runtime"
 LOG_DIR = RUNTIME_DIR / "logs"
 
-GPT_PORT = 9872
+GPT_PORT = 9880
 BACKEND_PORT = 5050
 FRONTEND_PORT = 5173
 
@@ -351,7 +351,7 @@ def run(no_browser: bool = False) -> None:
             conda,
             "run",
             "-n",
-            "GPTSoVits",
+            "GPTSoVITS",
             "--no-capture-output",
             "python",
             str(BACKEND_DIR / "start_gptsovits.py"),

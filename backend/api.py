@@ -11,7 +11,7 @@ from chat import (
     SpecialInteraction,
 )
 
-from tts import generateVoice, play_sound
+from tts import streamVoice
 
 from flask_cors import CORS
 import threading
@@ -52,8 +52,14 @@ def request_message():
     print("\n[Flask]: ENG:", pack.assistant_reply_ENG)
     print("[Flask]: JPS:", pack.assistant_reply_JPS)
     
-    generateVoice(pack.assistant_reply_JPS)
-    threading.Thread(target=play_sound).start()
+    # Synthesize and play Japanese sentence-by-sentence in the background.
+    # The English response can return immediately instead of waiting for all TTS.
+    threading.Thread(
+        target=streamVoice,
+        args=(pack.assistant_reply_JPS,),
+        name="amadeus-tts-stream",
+        daemon=True,
+    ).start()
 
     return jsonify({"response": pack.assistant_reply_ENG})
 
