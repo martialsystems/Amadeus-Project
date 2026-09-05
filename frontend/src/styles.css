@@ -531,29 +531,18 @@ button {
 }
 
 
-/* SPECIAL TOUCH */
-.character-stage {
-  position: relative;
-}
-
+/* Invisible interaction areas positioned by interactions.ts. */
 .touch-button {
   position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-600%, 0%);
+  transform: translate(-50%, -50%);
   z-index: 10;
-
-  width: 90px;
-  height: 60px;
-
-  background: transparent;/*rgba(255, 70, 70, 0.45)*/;
-  border: none; /*2px solid red*/;
-  border-radius: 12px;
-  color: transparent; /*white;*/
-  cursor: pointer;
-
-  /*background: transparent;
+  background: transparent;
   border: none;
-  color: transparent;*/
+  border-radius: 12px;
+  color: transparent;
+  cursor: pointer;
 }
 
+.touch-button:focus-visible {
+  outline: 2px solid white;
+}

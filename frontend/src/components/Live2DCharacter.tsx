@@ -7,8 +7,10 @@ import {
 
 import { KurisuController } from "../live2d/KurisuController";
 
+import type { PlayMotionResult } from "../live2d/MotionPlayer";
+
 export type Live2DCharacterHandle = {
-  playTapReaction: () => void;
+  playMotion: (group: string) => PlayMotionResult;
 };
 
 const Live2DCharacter = forwardRef<Live2DCharacterHandle>(
@@ -17,8 +19,8 @@ const Live2DCharacter = forwardRef<Live2DCharacterHandle>(
     const controllerRef = useRef<KurisuController | null>(null);
 
     useImperativeHandle(ref, () => ({
-      playTapReaction() {
-        controllerRef.current?.playTapReaction();
+      playMotion(group: string) {
+        return controllerRef.current?.playMotion(group) ?? "not-ready";
       },
     }), []);
 

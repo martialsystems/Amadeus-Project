@@ -1,0 +1,14 @@
+{
+  "extends": "./cubism/Framework/tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "./cubism",
+    "outDir": "./node_modules/.cache/cubism-types",
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.cubism.tsbuildinfo"
+  },
+  "include": [
+    "cubism/Framework/src/**/*.ts",
+    "cubism/Core/*.d.ts"
+  ]
+}

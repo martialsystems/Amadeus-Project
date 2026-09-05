@@ -11,6 +11,9 @@ import {
   sendInteraction,
 } from "./api";
 
+import { interactions } from "./interactions";
+import type { InteractionName } from "./interactions";
+
 export default function App() {
   const [messages, setMessages] = useState<MemoryMessage[]>([]);
   const [input, setInput] = useState("");
@@ -148,17 +151,21 @@ export default function App() {
     }
   }
 
-  async function handleInteraction(interactionValue: number) {
+  async function handleInteraction(name: InteractionName) {
     if (loading) return;
 
-    if (interactionValue === 1) {
-      characterRef.current?.playTapReaction();
+    const interaction = interactions[name];
+    const result = characterRef.current?.playMotion(interaction.motion) ?? "not-ready";
+    if (result === "busy") return;
+    if (result !== "started") {
+      setStatus(result === "missing" ? "Reaction animation is missing" : "Character is still loading");
+      return;
     }
 
     setLoading(true);
 
     try {
-      const reply = await sendInteraction(interactionValue);
+      const reply = await sendInteraction(interaction.backendId);
 
       setMessages((current) => [
         ...current,
@@ -199,6 +206,23 @@ export default function App() {
           <div className="scanline" />
 
           <Live2DCharacter ref={characterRef} />
+
+          {(Object.keys(interactions) as InteractionName[]).map((name) => {
+            const interaction = interactions[name];
+            return (
+              <button
+                key={name}
+                type="button"
+                className="touch-button"
+                style={interaction.position}
+                aria-label={interaction.label}
+                disabled={loading}
+                onClick={() => void handleInteraction(name)}
+              >
+                {interaction.label}
+              </button>
+            );
+          })}
         </div>
 
         <footer className="system-footer">
@@ -242,15 +266,6 @@ export default function App() {
               onClick={clearMemory}
             >
               Reset memory
-            </button>
-
-            <button
-              type="button"
-              className="touch-button"
-              disabled={loading}
-              onClick={() => void handleInteraction(1)}
-            >
-              Touch Chest
             </button>
           </div>
         </div>

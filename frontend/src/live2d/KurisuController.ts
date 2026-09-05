@@ -2,6 +2,7 @@ import { CubismMatrix44 } from "@framework/math/cubismmatrix44";
 
 import { initializeCubism } from "./cubismBootstrap";
 import { KurisuModel } from "./KurisuModel";
+import type { PlayMotionResult } from "./MotionPlayer";
 
 export class KurisuController {
   private canvas: HTMLCanvasElement;
@@ -12,6 +13,7 @@ export class KurisuController {
 
   private animationFrame = 0;
   private destroyed = false;
+  private lastFrameTime = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -48,20 +50,19 @@ export class KurisuController {
       this.handleResize
     );
 
-    this.model = new KurisuModel(gl);
+    const model = new KurisuModel(gl);
+    this.model = model;
 
     try {
-      await this.model.load(
-        this.modelPath
-      );
+      await model.load(this.modelPath);
     } catch (error) {
-      console.error(
-        "Failed to initialize Kurisu:",
-        error
-      );
-
+      if (this.destroyed) return;
+      this.destroy();
       throw error;
     }
+
+    if (this.destroyed) return;
+    this.lastFrameTime = performance.now();
 
     this.render();
   }
@@ -141,7 +142,10 @@ export class KurisuController {
       gl.COLOR_BUFFER_BIT
     );
 
-    this.model.update();
+    const now = performance.now();
+    const deltaSeconds = Math.min((now - this.lastFrameTime) / 1000, 0.1);
+    this.lastFrameTime = now;
+    this.model.update(deltaSeconds);
 
     const matrix =
       new CubismMatrix44();
@@ -187,12 +191,10 @@ export class KurisuController {
       );
   };
 
-  playTapReaction(): void {
-    if (!this.destroyed) {
-      this.model?.playTapReaction();
-    }
+  playMotion(group: string): PlayMotionResult {
+    return this.destroyed ? "not-ready" : this.model?.playMotion(group) ?? "not-ready";
   }
-  
+
   destroy(): void {
     this.destroyed = true;
 
