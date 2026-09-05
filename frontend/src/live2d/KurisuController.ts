@@ -187,6 +187,12 @@ export class KurisuController {
       );
   };
 
+  playTapReaction(): void {
+    if (!this.destroyed) {
+      this.model?.playTapReaction();
+    }
+  }
+  
   destroy(): void {
     this.destroyed = true;
 

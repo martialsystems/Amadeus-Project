@@ -112,5 +112,9 @@ def getMemory():
 def doSpecialInteraction():
     data = request.get_json(silent=True)
     interaction_value = data.get("interaction_value")
-    SpecialInteraction(interaction_value)
-    return jsonify({"status": "ok"})
+    response = SpecialInteraction(interaction_value)
+
+    return jsonify({
+    "status": "ok",
+    "response": response,
+    })

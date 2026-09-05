@@ -1,0 +1,183 @@
+{
+	"Version": 3,
+	"Meta": {
+		"Duration": 3,
+		"Fps": 30.0,
+		"Loop": true,
+		"AreBeziersRestricted": true,
+		"CurveCount": 7,
+		"TotalSegmentCount": 17,
+		"TotalPointCount": 54,
+		"UserDataCount": 0,
+		"TotalUserDataSize": 0
+	},
+	"Curves": [
+		{
+			"Target": "Parameter",
+			"Id": "ParamEyeROpen",
+			"Segments": [
+				0,
+				1,
+				0,
+				3,
+				1
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "ParamBreath",
+			"Segments": [
+				0,
+				0.5,
+				1,
+				0.111,
+				0.5,
+				0.222,
+				1,
+				0.333,
+				1,
+				1,
+				1.222,
+				1,
+				2.111,
+				0.5,
+				3,
+				0.5
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "Param4",
+			"Segments": [
+				0,
+				-19,
+				1,
+				0.444,
+				-19,
+				0.889,
+				20,
+				1.333,
+				20,
+				1,
+				1.889,
+				20,
+				2.444,
+				0,
+				3,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "Param6",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.111,
+				0,
+				0.222,
+				3.586,
+				0.333,
+				3.6,
+				1,
+				0.944,
+				3.679,
+				1.556,
+				3.7,
+				2.167,
+				3.7,
+				1,
+				2.444,
+				3.7,
+				2.722,
+				0,
+				3,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "Param7",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.111,
+				0,
+				0.222,
+				10,
+				0.333,
+				10,
+				1,
+				1.222,
+				10,
+				2.111,
+				0,
+				3,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "Param9",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.111,
+				0,
+				0.222,
+				1,
+				0.333,
+				1,
+				1,
+				0.722,
+				1,
+				1.111,
+				1,
+				1.5,
+				1,
+				1,
+				1.856,
+				1,
+				2.211,
+				1,
+				2.567,
+				1,
+				1,
+				2.711,
+				1,
+				2.856,
+				0,
+				3,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "ParamMouthOpenY",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.111,
+				0,
+				0.222,
+				1,
+				0.333,
+				1,
+				1,
+				0.389,
+				1,
+				0.444,
+				0,
+				0.5,
+				0,
+				0,
+				3,
+				0
+			]
+		}
+	]
+}

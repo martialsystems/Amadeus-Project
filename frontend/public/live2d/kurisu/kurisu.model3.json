@@ -10,6 +10,11 @@
         {
           "File": "kurisu.idle.json"
         }
+      ],
+      "TapReaction": [
+        {
+          "File": "KurisuSpecialTouch.motion3.json"
+        }
       ]
     },
     "Physics": "kurisu.physics.json",

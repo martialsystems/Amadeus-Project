@@ -1,6 +1,7 @@
 import { CubismModelSettingJson } from "@framework/cubismmodelsettingjson";
 import { CubismMatrix44 } from "@framework/math/cubismmatrix44";
 import { CubismUserModel } from "@framework/model/cubismusermodel";
+import { CubismMotion } from "@framework/motion/cubismmotion";
 
 export class KurisuModel extends CubismUserModel {
   private modelSetting: CubismModelSettingJson | null = null;
@@ -9,6 +10,8 @@ export class KurisuModel extends CubismUserModel {
   private gl: WebGLRenderingContext;
   private textures: WebGLTexture[] = [];
   private lastUpdateTime = 0;
+  private idleMotion: CubismMotion | null = null;
+  private tapMotion: CubismMotion | null = null;
 
   constructor(gl: WebGLRenderingContext) {
     super();
@@ -51,9 +54,14 @@ export class KurisuModel extends CubismUserModel {
     this.getRenderer().startUp(this.gl);
 
     await this.loadTextures();
-    await this.loadIdleMotion();
-    this.lastUpdateTime = performance.now();
+    this.idleMotion = await this.loadMotionGroup("Idle", true);
+    this.tapMotion = await this.loadMotionGroup("TapReaction", false);
 
+    if (this._motionManager && this.idleMotion && this.tapMotion) {
+      this._motionManager.startMotionPriority(this.idleMotion, false, 1);
+    }    
+
+    this.lastUpdateTime = performance.now();
     console.log("Kurisu model loaded successfully");
   }
 
@@ -215,47 +223,45 @@ export class KurisuModel extends CubismUserModel {
     });
   }
 
-  private async loadIdleMotion(): Promise<void> {
-    if (!this.modelSetting) {
+  private async loadMotionGroup(
+    group: string,
+    loop: boolean
+  ): Promise<CubismMotion | null> {
+    const settings = this.modelSetting;
+
+    if (!settings) {
       throw new Error("Model settings are not initialized");
     }
 
-    const motionFile =
-      this.modelSetting.getMotionFileName("Idle", 0);
+    const file = settings.getMotionFileName(group, 0);
 
-    if (!motionFile) {
-      throw new Error(
-        "No Idle motion is configured in kurisu.model3.json"
-      );
+    if (!file) {
+      throw new Error(`No motion configured for ${group}`);
     }
 
-    const motionPath = this.modelHomeDir + motionFile;
-    const response = await fetch(motionPath);
+    const response = await fetch(this.modelHomeDir + file);
 
     if (!response.ok) {
       throw new Error(
-        `Failed to load idle motion: ${response.status} ${motionPath}`
+        `Failed to load ${group}: ${response.status}`
       );
     }
 
     const buffer = await response.arrayBuffer();
 
-    // React may have unmounted the character during the fetch.
     if (!this._motionManager) {
-      return;
+      return null;
     }
 
     const motion = this.loadMotion(
       buffer,
       buffer.byteLength,
-      "Idle"
+      group
     );
 
     if (!motion) {
-      throw new Error("Cubism could not create the idle motion");
+      throw new Error(`Could not create ${group} motion`);
     }
-
-    const settings = this.modelSetting;
 
     const eyeBlinkIds = Array.from(
       { length: settings.getEyeBlinkParameterCount() },
@@ -268,28 +274,38 @@ export class KurisuModel extends CubismUserModel {
     );
 
     motion.setEffectIds(eyeBlinkIds, lipSyncIds);
-    motion.setLoop(true);
+    motion.setLoop(loop);
     motion.setLoopFadeIn(false);
-    motion.setFadeInTime(0.3);
-    motion.setFadeOutTime(0.3);
+    motion.setFadeInTime(0.2);
+    motion.setFadeOutTime(0.2);
 
-    // Priority 1 = idle. The manager owns and releases the motion.
-    this._motionManager.startMotionPriority(motion, true, 1);
-
-    console.log("Kurisu idle motion started:", motionPath);
+    return motion;
   }
+
+playTapReaction(): void {
+  if (!this._motionManager || !this.tapMotion || !this.idleMotion) {
+    return;
+  }
+
+  // Ignore additional animation triggers while reacting.
+  if (this._motionManager.getCurrentPriority() > 1) {
+    return;
+  }
+
+  // Keep the motion in memory so it can be played again.
+  this._motionManager.startMotionPriority(this.tapMotion, false, 2);
+}
 
 
   update(): void {
     const model = this.getModel();
+    const manager = this._motionManager;
 
-    if (!model || !this._motionManager) {
+    if (!model || !manager) {
       return;
     }
 
     const now = performance.now();
-
-    // Limit jumps when returning from a background tab.
     const deltaTimeSeconds =
       this.lastUpdateTime === 0
         ? 0
@@ -297,10 +313,15 @@ export class KurisuModel extends CubismUserModel {
 
     this.lastUpdateTime = now;
 
-    model.loadParameters();
-    this._motionManager.updateMotion(model, deltaTimeSeconds);
-    model.saveParameters();
+    // Resume idle when the reaction has finished.
+    if (manager.isFinished() && this.idleMotion) {
+      manager.startMotionPriority(this.idleMotion, false, 1);
+    }
 
+    // Start from the saved base pose each frame.
+    // This prevents reaction-only parameters from staying stuck.
+    model.loadParameters();
+    manager.updateMotion(model, deltaTimeSeconds);
     model.update();
   }
 
@@ -344,6 +365,13 @@ export class KurisuModel extends CubismUserModel {
 
     this.textures = [];
 
+    // Release the manager before releasing our cached motions.
     super.release();
+
+    this.idleMotion?.release();
+    this.tapMotion?.release();
+
+    this.idleMotion = null;
+    this.tapMotion = null;
   }
 }

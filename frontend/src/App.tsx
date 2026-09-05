@@ -7,6 +7,7 @@ import {
   resetMemory,
   sendMessage,
   setModel,
+  sendInteraction,
 } from "./api";
 
 export default function App() {
@@ -145,6 +146,38 @@ export default function App() {
     }
   }
 
+  async function handleInteraction(interactionValue: number) {
+    if (loading) return;
+
+    if (interactionValue === 2) {
+      characterRef.current?.playTapReaction();
+    }
+    
+    setLoading(true);
+
+    try {
+      const reply = await sendInteraction(interactionValue);
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: reply,
+        },
+      ]);
+
+      setStatus("Online");
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "Interaction failed"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="shell">
       {/* Character Panel */}
@@ -207,6 +240,15 @@ export default function App() {
               onClick={clearMemory}
             >
               Reset memory
+            </button>
+
+            <button
+              type="button"
+              className="touch-button"
+              disabled={loading}
+              onClick={() => void handleInteraction(1)}
+            >
+              Touch Chest
             </button>
           </div>
         </div>
