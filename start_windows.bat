@@ -1,25 +1,29 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions DisableDelayedExpansion
 
 cd /d "%~dp0"
 
-set "CONDA_EXE="
+rem CONDA_EXE belongs to Conda. Never replace it with the bare command conda.
+set "AMADEUS_CONDA_EXE="
 
-where conda >nul 2>nul
-if %errorlevel%==0 set "CONDA_EXE=conda"
+if defined CONDA_EXE if exist "%CONDA_EXE%" for %%I in ("%CONDA_EXE%") do if /I "%%~xI"==".exe" set "AMADEUS_CONDA_EXE=%%~fI"
+if not defined AMADEUS_CONDA_EXE for /f "delims=" %%I in ('where conda.exe 2^>nul') do if not defined AMADEUS_CONDA_EXE set "AMADEUS_CONDA_EXE=%%I"
 
-if not defined CONDA_EXE if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" set "CONDA_EXE=%USERPROFILE%\anaconda3\Scripts\conda.exe"
-if not defined CONDA_EXE if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" set "CONDA_EXE=%USERPROFILE%\miniconda3\Scripts\conda.exe"
-if not defined CONDA_EXE if exist "C:\ProgramData\anaconda3\Scripts\conda.exe" set "CONDA_EXE=C:\ProgramData\anaconda3\Scripts\conda.exe"
+if not defined AMADEUS_CONDA_EXE if exist "%USERPROFILE%\anaconda3\Scripts\conda.exe" set "AMADEUS_CONDA_EXE=%USERPROFILE%\anaconda3\Scripts\conda.exe"
+if not defined AMADEUS_CONDA_EXE if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" set "AMADEUS_CONDA_EXE=%USERPROFILE%\miniconda3\Scripts\conda.exe"
+if not defined AMADEUS_CONDA_EXE if exist "%LOCALAPPDATA%\anaconda3\Scripts\conda.exe" set "AMADEUS_CONDA_EXE=%LOCALAPPDATA%\anaconda3\Scripts\conda.exe"
+if not defined AMADEUS_CONDA_EXE if exist "%LOCALAPPDATA%\miniconda3\Scripts\conda.exe" set "AMADEUS_CONDA_EXE=%LOCALAPPDATA%\miniconda3\Scripts\conda.exe"
+if not defined AMADEUS_CONDA_EXE if exist "C:\ProgramData\anaconda3\Scripts\conda.exe" set "AMADEUS_CONDA_EXE=C:\ProgramData\anaconda3\Scripts\conda.exe"
+if not defined AMADEUS_CONDA_EXE if exist "C:\ProgramData\miniconda3\Scripts\conda.exe" set "AMADEUS_CONDA_EXE=C:\ProgramData\miniconda3\Scripts\conda.exe"
 
-if not defined CONDA_EXE (
+if not defined AMADEUS_CONDA_EXE (
     echo ERROR: Conda could not be found.
     echo Install Anaconda or Miniconda, then try again.
     pause
     exit /b 1
 )
 
-"%CONDA_EXE%" run -n amadeus --no-capture-output python "%CD%\scripts\launcher.py"
+"%AMADEUS_CONDA_EXE%" run -n amadeus --no-capture-output python "%CD%\scripts\launcher.py"
 
 set "EXIT_CODE=%errorlevel%"
 
