@@ -166,14 +166,29 @@ INTERACTION_EVENTS = {
 
 INTERACTION_RESPONSES = {
     1: [
-        {"text": "Hey, you'll mess up my hair!", "audio_url": None},
-        {"text": "What was that for?", "audio_url": None},
-        {"text": "You're enjoying this, aren't you?", "audio_url": None},
+        {"text": "Hey! What do you think you're doing?", "audio_url": None},
+        {"text": "Pervert! Keep your hands to yourself!", "audio_url": None},
+        {"text": "That was completely inappropriate, you idiot!", "audio_url": None},
+        {"text": "Wha—? Explain yourself. Immediately.", "audio_url": None},
+        {"text": "Do you have a death wish or are you just exceptionally stupid?", "audio_url": None},
+        {"text": "Unbelievable. I'm adding 'personal space invader' to your file", "audio_url": None},
+        {"text": "Touch me like that again and I'll have you banned from this lab.", "audio_url": None},
+        {"text": "Was there a point to that, or is your intellect solely devoted to juvenile antics?", "audio_url": None},
+        {"text": "My chest is not a laboratory interface, you know.", "audio_url": None},
+        {"text": "Honestly... your lack of basic social decorum is astounding.", "audio_url": None},
+
     ],
     2: [
-        {"text": "Hm? What is it?", "audio_url": None},
-        {"text": "You have my attention.", "audio_url": None},
-        {"text": "Yes? Did you need something?", "audio_url": None},
+        {"text": "...", "audio_url": None},
+        {"text": "...hmph.", "audio_url": None},
+        {"text": "......Idiot.", "audio_url": None},
+        {"text": "...Just... finish the calculations.", "audio_url": None},
+        {"text": "...Fine. For a moment.", "audio_url": None},
+        {"text": "...You're messing up my hair... a little.", "audio_url": None},
+        {"text": "...I'm not a child, you know.", "audio_url": None},
+        {"text": "...Tch.", "audio_url": None},
+        {"text": "...Don't stop until I say so.", "audio_url": None},
+        {"text": "Your hand is... very warm", "audio_url": None},
     ],
     3: [
         {"text": "You could just say my name.", "audio_url": None},
