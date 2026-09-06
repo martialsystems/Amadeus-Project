@@ -221,22 +221,3 @@ def SpecialInteraction(interaction_value: int) -> dict:
     return {"response": response, "audio_url": variant.get("audio_url")}
 
 
-
-#-----DEBUGGING TOOLS-----
-
-# if __name__ == "__main__":
-#     from datetime import datetime, timezone
-
-#     print("OS local:", datetime.now().astimezone().isoformat())
-#     print("UTC     :", datetime.now(timezone.utc).isoformat())
-
-#     while True:
-#         user_message = input("Enter msg: ").strip()
-#         if user_message.lower() in {"no", "exit", "quit"}:
-#             break
-#         pack = getOutputPacked(user_message)
-        
-
-#         print("\n[Amadeus]: ENG:", pack.assistant_reply_ENG)
-#         print("[Amadeus]: JPS:", pack.assistant_reply_JPS)
-#         print("-" * 60)
