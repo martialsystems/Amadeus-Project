@@ -91,7 +91,7 @@ class AmadeusPack(BaseModel):
 #     - assistant_reply_JPS: Japanese TTS-safe speech text (no stage directions)
 # - exactly ONE LLM call is made under normal operation
 # - on structured output failure, falls back to a plain LLM call with a safe default Japanese reply
-def getResponsePacked(message_context) -> AmadeusPack:
+def getResponsePacked(message_context, internal_context=None) -> AmadeusPack:
     llm = get_llm(API_KEY, LLM_Model)
 
     # IMPORTANT: Add a system rule that tells the model exactly what to output.
@@ -109,7 +109,7 @@ def getResponsePacked(message_context) -> AmadeusPack:
 
     messages = (
         store.load_default_personality_messages()
-        + [store.load_internal_context()]
+        + [internal_context if internal_context is not None else store.load_internal_context()]
         + [pack_rules]
         + message_context
     )
@@ -144,10 +144,12 @@ def getResponsePacked(message_context) -> AmadeusPack:
 #     - assistant_reply_ENG (English UI text)
 #     - assistant_reply_JPS (Japanese TTS-safe speech text)
 def getOutputPacked(user_message: str) -> AmadeusPack:
+    # Snapshot the previous turn before the new message becomes the latest one.
+    internal_context = store.load_internal_context()
     store.append_message("user", user_message)
     context = store.build_prompt_messages()[-80:]
 
-    pack = getResponsePacked(context)
+    pack = getResponsePacked(context, internal_context=internal_context)
 
     # Store what the user actually sees
     store.append_message("assistant", pack.assistant_reply_ENG)
