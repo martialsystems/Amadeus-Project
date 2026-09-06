@@ -8,6 +8,8 @@ Amadeus began as a small personal experiment inspired by *Steins;Gate*. It has s
 
 The project is still actively evolving. It is not intended to be a finished product; it is an ongoing attempt to explore what happens when an AI character is given personality, voice, visual presence, and continuity over time.
 
+![Amadeus Preview](docs/images/amadeus-preview.png)
+
 ---
 
 ## Current Status
