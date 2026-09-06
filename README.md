@@ -10,7 +10,8 @@ The project is still actively evolving. It is not intended to be a finished prod
 
 ![Amadeus Preview](docs/images/mainmenu.png)
 
----
+![Amadeus Preview](docs/images/settings.png)
+
 
 ## Current Status
 
