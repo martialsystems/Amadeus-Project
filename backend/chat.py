@@ -159,7 +159,7 @@ def getOutputPacked(user_message: str) -> str:
 # ---------- SPECIAL INTERACTIONS ---------- 
 
 INTERACTION_EVENTS = {
-    1: "[Interaction event: The user touched your shoulder.]",
+    1: "[Interaction event: The user touched your chest.]",
     2: "[Interaction event: The user patted your head.]",
     3: "[Interaction event: The user tapped your arm.]",
 }
@@ -179,16 +179,18 @@ INTERACTION_RESPONSES = {
 
     ],
     2: [
-        {"text": "...", "audio_url": None},
-        {"text": "...hmph.", "audio_url": None},
-        {"text": "......Idiot.", "audio_url": None},
-        {"text": "...Just... finish the calculations.", "audio_url": None},
-        {"text": "...Fine. For a moment.", "audio_url": None},
-        {"text": "...You're messing up my hair... a little.", "audio_url": None},
-        {"text": "...I'm not a child, you know.", "audio_url": None},
-        {"text": "...Tch.", "audio_url": None},
-        {"text": "...Don't stop until I say so.", "audio_url": None},
-        {"text": "Your hand is... very warm", "audio_url": None},
+        {"text": "“Mmmmm…”", "audio_url": "assets/reaction_audio/kurisu_head_1.wav"},
+        {"text": "“Mm… this isn’t bad.”", "audio_url": "assets/reaction_audio/kurisu_head_2.wav"},
+        {"text": "“Just a little longer…”", "audio_url": "assets/reaction_audio/kurisu_head_3.wav"},
+        {"text": "…I mean, you don’t have to stop.", "audio_url": "assets/reaction_audio/kurisu_head_4.wav"},
+        {"text": "Mm… right there is just right", "audio_url": "assets/reaction_audio/kurisu_head_5.wav"},
+        {"text": "Hey… don’t treat me like a child.", "audio_url": "assets/reaction_audio/kurisu_head_6.wav"},
+        {"text": "...I'm not a child, you know.", "audio_url": "assets/reaction_audio/kurisu_head_7.wav"},
+        {"text": "W-What…? Why all of a sudden?", "audio_url": "assets/reaction_audio/kurisu_head_8.wav"},
+        {"text": "…I’m starting to feel kind of sleepy.", "audio_url": "assets/reaction_audio/kurisu_head_9.wav"},
+        {"text": "Mmm… honestly…", "audio_url": "assets/reaction_audio/kurisu_head_10.wav"},
+        {"text": "I-It’s not like it feels good or anything… mm…", "audio_url": "assets/reaction_audio/kurisu_head_11.wav"},
+
     ],
     3: [
         {"text": "You could just say my name.", "audio_url": None},
