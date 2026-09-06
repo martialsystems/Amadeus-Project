@@ -35,6 +35,8 @@ export class KurisuModel extends CubismUserModel {
     signal.throwIfAborted();
     this.loadModel(moc);
     if (!this.getModel()) throw new Error("Cubism could not create the model");
+    // Seed the pose restored by the first animation frame.
+    this.getModel().saveParameters();
 
     this.createRenderer(this.gl.canvas.width, this.gl.canvas.height);
     const renderer = this.getRenderer();
@@ -86,6 +88,9 @@ export class KurisuModel extends CubismUserModel {
     const model = this.getModel();
     model.loadParameters();
     this.motions.update(model, deltaSeconds);
+    // Carry the blended motion pose into the next frame. Saving before
+    // lip-sync keeps audio-driven mouth values out of the motion baseline.
+    model.saveParameters();
     if (this.speaking) {
       model.setParameterValueById(this.mouthOpenId, this.lipSyncValue);
     }

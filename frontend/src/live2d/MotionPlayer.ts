@@ -57,8 +57,10 @@ export class MotionPlayer {
         motion.setLoopFadeIn(false);
         const fadeIn = settings.getMotionFadeInTimeValue(group, index);
         const fadeOut = settings.getMotionFadeOutTimeValue(group, index);
-        motion.setFadeInTime(fadeIn >= 0 ? fadeIn : 0.2);
-        motion.setFadeOutTime(fadeOut >= 0 ? fadeOut : 0.2);
+        // model3.json overrides are optional. Otherwise retain the fades
+        // CubismMotion.create() loaded from the motion3.json file.
+        if (fadeIn >= 0) motion.setFadeInTime(fadeIn);
+        if (fadeOut >= 0) motion.setFadeOutTime(fadeOut);
       }
     }
 

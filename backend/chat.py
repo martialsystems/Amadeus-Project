@@ -129,7 +129,6 @@ def getResponsePacked(message_context, internal_context=None) -> AmadeusPack:
             )
 
 
-
 # pre:
 # - user_message is a non-empty string from the user
 # - SQLite memory store is available and writable
