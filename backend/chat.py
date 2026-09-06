@@ -1,6 +1,7 @@
 import memory as store
 from llm import get_llm, reset_llm
 from pydantic import BaseModel, Field
+from chat_interactions import INTERACTION_EVENTS, INTERACTION_RESPONSES
 import random
 
 default_LLM_Model = store.DEFAULT_LLM_MODEL
@@ -38,6 +39,14 @@ def setKey(key_string: str):
     API_KEY = next_key
     reset_llm()  # IMPORTANT: recreate with new key
     print("[Amadeus] API key updated")
+
+
+#pre: new_personality is new context for personality e.g., "This is Kurisu Makise....etc"
+#post: Should update personality.txt using store.save_personality.
+#      yes i know this is a bit round about, but to keep consistency.
+def setPersonality(new_personality: str):
+    store.save_personality(new_personality)
+    print("[Amadeus] Updated personality!")
 
 
 def has_api_key() -> bool:
@@ -86,26 +95,13 @@ def getResponsePacked(message_context) -> AmadeusPack:
     pack_rules = {
         "role": "system",
         "content": (
-            "Return a JSON object with keys: assistant_reply_ENG, assistant_reply_JPS.\n"
-            "\n"
-            "assistant_reply_ENG:\n"
-            "- Natural English for UI. May include short stage directions in square brackets.\n"
-            "- DO NOT USE ... for pauses IT BREAKS TTS"
-            "\n"
-            "assistant_reply_JPS:\n"
-            "- Translate the meaning into natural spoken Japanese dialogue.\n"
-            "- Keep it concise. Prefer 1 to 4 sentences.\n"
-            "- Do NOT include narration, inner thoughts, or action descriptions.\n"
-            "- Sound like a real person speaking, not formal or robotic.\n"
-            "- Do not explain anything; respond directly as dialogue.\n"
-            "- Avoid ultra short standalone interjections as their own sentence. Attach them to the following sentence when possible.\n"
-            "- Mild conversational fillers such as えっと or まあ are allowed but should be used sparingly.\n"
-            "- Allowed punctuation: 。 、 ！ ？ only.\n"
-            "- Replace … or ... with 。\n"
-            "- DO NOT USE … AT ALL---IT BREAKS TTS"
-            "- Do NOT output any of these characters: ()[]{}<>\"'`*:_;#@~=|\\/・\n"
-            "- If the input contains quotation marks, do not copy them; say the line naturally.\n"
-        )
+            "Write only Kurisu's spoken dialogue. "
+            "Do not include narration, stage directions, actions, facial expressions, "
+            "body language, or inner thoughts in either response. "
+            "assistant_reply_ENG should be natural English dialogue. "
+            "assistant_reply_JPS should be the same response in natural spoken Japanese for TTS. "
+            "Keep the meaning and tone consistent between both languages."
+        ),
     }
 
     messages = (
@@ -116,7 +112,7 @@ def getResponsePacked(message_context) -> AmadeusPack:
     )
 
     try:
-        structured = llm.with_structured_output(AmadeusPack)
+        structured = llm.with_structured_output(AmadeusPack, method="function_calling",)        
         out: AmadeusPack = structured.invoke(messages)
         return out
     except Exception as e:
@@ -144,7 +140,7 @@ def getResponsePacked(message_context) -> AmadeusPack:
 # - returns an AmadeusPack containing:
 #     - assistant_reply_ENG (English UI text)
 #     - assistant_reply_JPS (Japanese TTS-safe speech text)
-def getOutputPacked(user_message: str) -> str:
+def getOutputPacked(user_message: str) -> AmadeusPack:
     store.append_message("user", user_message)
     context = store.build_prompt_messages()[-80:]
 
@@ -158,55 +154,14 @@ def getOutputPacked(user_message: str) -> str:
 
 # ---------- SPECIAL INTERACTIONS ---------- 
 
-INTERACTION_EVENTS = {
-    1: "[Interaction event: The user touched your chest.]",
-    2: "[Interaction event: The user patted your head.]",
-    3: "[Interaction event: The user tapped your arm.]",
-}
-
-INTERACTION_RESPONSES = {
-    1: [
-        {"text": "Hey! What do you think you're doing?", "audio_url": "assets/reaction_audio/kurisu_special_1.wav"},
-        {"text": "Pervert! Keep your hands to yourself!", "audio_url": "assets/reaction_audio/kurisu_special_2.wav"},
-        {"text": "That was completely inappropriate, you idiot!", "audio_url": "assets/reaction_audio/kurisu_special_3.wav"},
-        {"text": "Wha—? Explain yourself. Immediately.", "audio_url": "assets/reaction_audio/kurisu_special_4.wav"},
-        {"text": "Do you have a death wish or are you just exceptionally stupid?", "audio_url": "assets/reaction_audio/kurisu_special_5.wav"},
-        {"text": "Unbelievable. I'm adding 'personal space invader' to your file", "audio_url": "assets/reaction_audio/kurisu_special_6.wav"},
-        {"text": "Touch me like that again and I'll have you banned from this lab.", "audio_url": "assets/reaction_audio/kurisu_special_7.wav"},
-        {"text": "Was there a point to that, or is your intellect solely devoted to juvenile antics?", "audio_url": "assets/reaction_audio/kurisu_special_8.wav"},
-        {"text": "My chest is not a laboratory interface, you know.", "audio_url": "assets/reaction_audio/kurisu_special_9.wav"},
-        {"text": "Honestly... your lack of basic social decorum is astounding.", "audio_url": "assets/reaction_audio/kurisu_special_10.wav"},
-
-    ],
-    2: [
-        {"text": "“Mmmmm…”", "audio_url": "assets/reaction_audio/kurisu_head_1.wav"},
-        {"text": "“Mm… this isn’t bad.”", "audio_url": "assets/reaction_audio/kurisu_head_2.wav"},
-        {"text": "“Just a little longer…”", "audio_url": "assets/reaction_audio/kurisu_head_3.wav"},
-        {"text": "…I mean, you don’t have to stop.", "audio_url": "assets/reaction_audio/kurisu_head_4.wav"},
-        {"text": "Mm… right there is just right", "audio_url": "assets/reaction_audio/kurisu_head_5.wav"},
-        {"text": "Hey… don’t treat me like a child.", "audio_url": "assets/reaction_audio/kurisu_head_6.wav"},
-        {"text": "...I'm not a child, you know.", "audio_url": "assets/reaction_audio/kurisu_head_7.wav"},
-        {"text": "W-What…? Why all of a sudden?", "audio_url": "assets/reaction_audio/kurisu_head_8.wav"},
-        {"text": "…I’m starting to feel kind of sleepy.", "audio_url": "assets/reaction_audio/kurisu_head_9.wav"},
-        {"text": "Mmm… honestly…", "audio_url": "assets/reaction_audio/kurisu_head_10.wav"},
-        {"text": "I-It’s not like it feels good or anything… mm…", "audio_url": "assets/reaction_audio/kurisu_head_11.wav"},
-
-    ],
-    3: [
-        {"text": "You could just say my name.", "audio_url": None},
-        {"text": "Hey! I'm right here.", "audio_url": None},
-        {"text": "What's up?", "audio_url": None},
-    ],
-}
-
 # pre:
 # - interaction value represents int value of the corresponding interaction. e.g.,
-#   1 -> Shoulder touch
+#   1 -> chest touch
 #   2 -> Head pat
 #   3 -> Arm poke
 #
 # post:
-# - append in format: ("system", "[Interaction event: The user touched your shoulder.]")
+# - append in format: ("user", "[Interaction event: The user touched your shoulder.]")
 # - return the hard coded responses
 def SpecialInteraction(interaction_value: int) -> dict:
     event = INTERACTION_EVENTS.get(interaction_value)

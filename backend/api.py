@@ -10,6 +10,7 @@ from chat import (
     getLLMModel,
     get_raw_memory,
     SpecialInteraction,
+    setPersonality
 )
 
 from tts import streamVoiceChunks
@@ -174,6 +175,25 @@ def getMemory():
     print("[Flask] /getMemory triggered")  
     msgs = get_raw_memory()
     return jsonify({"status":"ok","messages": msgs})
+
+
+# pre: 
+# - JSON body containing new context for personality as string.
+#
+# post:
+# - overwrite the current personality.txt
+# - return sucess or error status
+@application.route("/setPersonality", methods=["POST"])
+def settingPersonality():
+    print("[Flask] /setPersonality triggered")  
+    data = request.get_json() or {}
+    new_personality = data.get("personality", "").strip()
+    if new_personality:
+        setPersonality(new_personality)
+        return jsonify({"status": "ok", "message": "new model recieved!"})
+    else:
+        return jsonify({"status": "error", "message": "No model recieved"}), 400
+
 
 # pre: Interaction number is given. e.g., 1,2,3
 # post: use SpecialInteraction() from chat to update accordingly
