@@ -305,17 +305,22 @@ conda install ffmpeg
 ```
 ### Initialize fast-langdetect
 
-GPT-SoVITS uses `fast-langdetect` for language detection. The Python package
-is installed automatically through GPT-SoVITS's `requirements.txt`, but on
-some installations its model cache directory may need to be created manually
-before first use.
+GPT-SoVITS uses `fast-langdetect` for language detection. If you encounter
+a missing model cache directory error, create the directory below.
 
-From the `Amadeus-Project` directory:
+Run this while still inside the `GPT-SoVITS` directory.
 
 #### Windows
 
 ```bat
-mkdir GPT-SoVITS\GPT_SoVITS\pretrained_models\fast_langdetect
+mkdir GPT_SoVITS\pretrained_models\fast_langdetect
+```
+
+#### macOS / Linux
+
+```bash
+mkdir -p GPT_SoVITS/pretrained_models/fast_langdetect
+```
 
 Return to the Amadeus project root:
 

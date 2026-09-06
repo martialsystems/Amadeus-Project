@@ -62,8 +62,9 @@ def load_default_personality_messages() -> List[Dict[str, str]]:
 
 
 def save_personality(context: str) -> None:
-    with open(PATH_TO_PERSONALITY, default_text="") as f:
-        f.write((context or "")).strip();
+    _ensure_file(PATH_TO_PERSONALITY, default_text="")
+    with open(PATH_TO_PERSONALITY, "w", encoding="utf-8") as f:
+        f.write((context or "").strip())
 
 
 # ---------- Additional Instructions ---------- (NO SQL)
