@@ -12,6 +12,52 @@ The project is still actively evolving. It is not intended to be a finished prod
 
 ![Amadeus Preview](docs/images/settings.png)
 
+## How Conversation and Voice Work
+
+Amadeus currently separates the **text you read** from the **voice you hear**.
+
+By default, you can chat with Kurisu in **English**.
+
+For each normal response, Amadeus asks the LLM to produce two versions of the same reply in a single model call:
+
+- **English (`assistant_reply_ENG`)** — displayed in the conversation UI.
+- **Japanese (`assistant_reply_JPS`)** — natural spoken Japanese sent to GPT-SoVITS for voice synthesis.
+
+So a typical conversation looks like:
+
+```text
+You type in English
+        │
+        ▼
+      LLM
+        │
+        ├── English response ──► displayed in the WebUI
+        │
+        └── Japanese dialogue ─► GPT-SoVITS ─► Kurisu speaks Japanese
+```
+
+> [!IMPORTANT]
+> ### Does Amadeus run a local LLM?
+>
+> **No — Amadeus currently uses OpenRouter for the conversational LLM.**
+>
+> You provide your own OpenRouter API key and select which supported model you want Amadeus to use from the settings menu.
+>
+> The LLM itself therefore does **not** run on your GPU.
+>
+> What currently runs locally:
+>
+> - **GPT-SoVITS** — Japanese voice synthesis
+> - **Live2D / Cubism** — character rendering and animation
+> - **Conversation history** — stored locally in SQLite
+> - **Amadeus frontend and backend**
+>
+> What currently runs remotely:
+>
+> - **LLM inference** — through OpenRouter
+>
+> Amadeus does **not currently bundle or automatically install a local LLM.**
+> Local LLM support may be added in the future.
 
 ## Current Status
 
