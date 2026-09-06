@@ -835,8 +835,12 @@ Talking-body motion           ✓
 Browser streamed speech       ✓
 Audio-driven lip sync         ✓
 Prerecorded interaction audio ✓
+frontend personality editing  ✓
+Improved Temporal awareness   ✓
+Poke interactions (stomach)   planned
 Prompting improvements        planned (high priority)
-Expression control            next
+Expression control            planned (very low priority)
+More/improved animations      planned (require hiring animator)
 Memory redesign               later
 ```
 
