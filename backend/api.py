@@ -10,7 +10,8 @@ from chat import (
     getLLMModel,
     get_raw_memory,
     SpecialInteraction,
-    setPersonality
+    setPersonality,
+    getPersonality,
 )
 
 from tts import streamVoiceChunks
@@ -177,6 +178,17 @@ def getMemory():
     return jsonify({"status":"ok","messages": msgs})
 
 
+@application.route("/getPersonality", methods=["GET"])
+def get_personality():
+    try:
+        personality = getPersonality()
+    except OSError:
+        return jsonify({"message": "Could not load personality"}), 500
+    response = jsonify({"status": "ok", "personality": personality})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # pre: 
 # - JSON body containing new context for personality as string.
 #
@@ -186,13 +198,16 @@ def getMemory():
 @application.route("/setPersonality", methods=["POST"])
 def settingPersonality():
     print("[Flask] /setPersonality triggered")  
-    data = request.get_json() or {}
-    new_personality = data.get("personality", "").strip()
-    if new_personality:
+    data = request.get_json(silent=True)
+    new_personality = data.get("personality") if isinstance(data, dict) else None
+    if not isinstance(new_personality, str) or not new_personality.strip():
+        return jsonify({"status": "error", "message": "Enter a personality before saving."}), 400
+    new_personality = new_personality.strip()
+    try:
         setPersonality(new_personality)
-        return jsonify({"status": "ok", "message": "new model recieved!"})
-    else:
-        return jsonify({"status": "error", "message": "No model recieved"}), 400
+    except OSError:
+        return jsonify({"message": "Could not save personality. Please try again."}), 500
+    return jsonify({"status": "ok", "message": "Personality updated", "personality": new_personality})
 
 
 # pre: Interaction number is given. e.g., 1,2,3

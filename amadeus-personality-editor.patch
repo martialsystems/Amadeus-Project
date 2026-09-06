@@ -1,0 +1,670 @@
+diff --git a/backend/api.py b/backend/api.py
+index 6fb27b4..610db1d 100644
+--- a/backend/api.py
++++ b/backend/api.py
+@@ -10,7 +10,8 @@ from chat import (
+     getLLMModel,
+     get_raw_memory,
+     SpecialInteraction,
+-    setPersonality
++    setPersonality,
++    getPersonality,
+ )
+ 
+ from tts import streamVoiceChunks
+@@ -177,6 +178,17 @@ def getMemory():
+     return jsonify({"status":"ok","messages": msgs})
+ 
+ 
++@application.route("/getPersonality", methods=["GET"])
++def get_personality():
++    try:
++        personality = getPersonality()
++    except OSError:
++        return jsonify({"message": "Could not load personality"}), 500
++    response = jsonify({"status": "ok", "personality": personality})
++    response.headers["Cache-Control"] = "no-store"
++    return response
++
++
+ # pre: 
+ # - JSON body containing new context for personality as string.
+ #
+@@ -186,13 +198,16 @@ def getMemory():
+ @application.route("/setPersonality", methods=["POST"])
+ def settingPersonality():
+     print("[Flask] /setPersonality triggered")  
+-    data = request.get_json() or {}
+-    new_personality = data.get("personality", "").strip()
+-    if new_personality:
++    data = request.get_json(silent=True)
++    new_personality = data.get("personality") if isinstance(data, dict) else None
++    if not isinstance(new_personality, str) or not new_personality.strip():
++        return jsonify({"status": "error", "message": "Enter a personality before saving."}), 400
++    new_personality = new_personality.strip()
++    try:
+         setPersonality(new_personality)
+-        return jsonify({"status": "ok", "message": "new model recieved!"})
+-    else:
+-        return jsonify({"status": "error", "message": "No model recieved"}), 400
++    except OSError:
++        return jsonify({"message": "Could not save personality. Please try again."}), 500
++    return jsonify({"status": "ok", "message": "Personality updated", "personality": new_personality})
+ 
+ 
+ # pre: Interaction number is given. e.g., 1,2,3
+diff --git a/backend/chat.py b/backend/chat.py
+index 833d8f4..0cdd9d0 100644
+--- a/backend/chat.py
++++ b/backend/chat.py
+@@ -7,7 +7,6 @@ import random
+ default_LLM_Model = store.DEFAULT_LLM_MODEL
+ API_KEY = store.load_api_key()
+ LLM_Model = store.load_llm_model(default_model=default_LLM_Model)
+-default_personality = store.load_default_personality_messages()
+ 
+ 
+ #pre: The intended new_model is a string e.g., "deepseek/deepseek-v3.2-exp"
+@@ -49,6 +48,10 @@ def setPersonality(new_personality: str):
+     print("[Amadeus] Updated personality!")
+ 
+ 
++def getPersonality() -> str:
++    return store.load_personality()
++
++
+ def has_api_key() -> bool:
+     return bool(API_KEY.strip())
+ 
+@@ -79,7 +82,7 @@ class AmadeusPack(BaseModel):
+ # pre:
+ # - message_context is a List[Dict[str, str]] with keys: "role" and "content"
+ # - message_context contains recent user/assistant messages only (no system persona)
+-# - default_personality and internal system context are available
++# - personality is read from disk for each reply; internal system context is available
+ # - LLM (via LangChain + OpenRouter) is properly configured
+ #
+ # post:
+@@ -105,7 +108,7 @@ def getResponsePacked(message_context) -> AmadeusPack:
+     }
+ 
+     messages = (
+-        default_personality
++        store.load_default_personality_messages()
+         + [store.load_internal_context()]
+         + [pack_rules]
+         + message_context
+@@ -175,4 +178,3 @@ def SpecialInteraction(interaction_value: int) -> dict:
+     store.append_message("assistant", response);    
+     return {"response": response, "audio_url": variant.get("audio_url")}
+ 
+-
+diff --git a/backend/tests/test_personality.py b/backend/tests/test_personality.py
+new file mode 100644
+index 0000000..d17d6a7
+--- /dev/null
++++ b/backend/tests/test_personality.py
+@@ -0,0 +1,76 @@
++"""Personality API and prompt regression tests; no LLM or TTS calls."""
++import importlib
++import os
++from pathlib import Path
++import sys
++import tempfile
++from types import SimpleNamespace
++import unittest
++from unittest.mock import patch
++
++
++class PersonalityTests(unittest.TestCase):
++    def setUp(self):
++        self.directory = tempfile.TemporaryDirectory()
++        self.addCleanup(self.directory.cleanup)
++        previous_directory = os.getcwd()
++        os.chdir(self.directory.name)
++        self.addCleanup(os.chdir, previous_directory)
++        backend = str(Path(__file__).resolve().parents[1])
++        sys.path.insert(0, backend)
++        self.addCleanup(sys.path.remove, backend)
++        modules = patch.dict(sys.modules, {
++            'llm': SimpleNamespace(get_llm=lambda *args: None, reset_llm=lambda: None),
++            'tts': SimpleNamespace(streamVoiceChunks=lambda text: iter(())),
++        })
++        modules.start()
++        self.addCleanup(modules.stop)
++        for name in ('api', 'chat', 'memory', 'chat_interactions'):
++            sys.modules.pop(name, None)
++        self.api = importlib.import_module('api')
++        self.chat = importlib.import_module('chat')
++        self.memory = importlib.import_module('memory')
++        self.client = self.api.application.test_client()
++
++    def test_save_read_and_next_prompt_without_restart(self):
++        self.memory.save_personality('Original personality')
++        self.memory.append_message('user', 'Keep this conversation')
++        initial = self.client.get('/getPersonality')
++        self.assertEqual(initial.json['personality'], 'Original personality')
++        self.assertEqual(initial.headers['Cache-Control'], 'no-store')
++        updated = '  You are Kurisu.\n自然に話してね。  '
++        response = self.client.post('/setPersonality', json={'personality': updated})
++        self.assertEqual(response.status_code, 200)
++        self.assertEqual(response.json['personality'], updated.strip())
++        self.assertEqual(self.client.get('/getPersonality').json['personality'], updated.strip())
++        self.assertEqual(Path('data/personality.txt').read_text(encoding='utf-8'), updated.strip())
++        captured = []
++        reply = self.chat.AmadeusPack(assistant_reply_ENG='Hello', assistant_reply_JPS='こんにちは')
++        fake = SimpleNamespace(with_structured_output=lambda *a, **k:
++                               SimpleNamespace(invoke=lambda messages: captured.extend(messages) or reply))
++        with patch.object(self.chat, 'get_llm', return_value=fake):
++            self.chat.getResponsePacked([])
++        self.assertEqual(captured[0], {'role': 'system', 'content': updated.strip()})
++        self.assertEqual(self.memory.load_memory_raw()[0]['content'], 'Keep this conversation')
++
++    def test_invalid_input_does_not_overwrite_personality(self):
++        self.memory.save_personality('Keep me')
++        for payload in ({}, [], {'personality': None}, {'personality': 123},
++                        {'personality': []}, {'personality': ''}, {'personality': '  '}):
++            with self.subTest(payload=payload):
++                self.assertEqual(self.client.post('/setPersonality', json=payload).status_code, 400)
++                self.assertEqual(self.memory.load_personality(), 'Keep me')
++
++    def test_storage_errors_have_readable_responses(self):
++        with patch.object(self.api, 'getPersonality', side_effect=OSError):
++            response = self.client.get('/getPersonality')
++            self.assertEqual(response.status_code, 500)
++            self.assertEqual(response.json['message'], 'Could not load personality')
++        with patch.object(self.api, 'setPersonality', side_effect=OSError):
++            response = self.client.post('/setPersonality', json={'personality': 'New text'})
++            self.assertEqual(response.status_code, 500)
++            self.assertIn('Could not save personality', response.json['message'])
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index f81f2e6..d0c7a49 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -3,6 +3,8 @@ import Live2DCharacter from "./components/Live2DCharacter";
+ import type { Live2DCharacterHandle } from "./components/Live2DCharacter";
+ import {
+   getCurrentModel,
++  getPersonality,
++  setPersonality,
+   getApiKeyStatus,
+   setApiKey,
+   getMemory,
+@@ -27,14 +29,29 @@ export default function App() {
+   const [apiKey, setApiKeyInput] = useState("");
+   const [savingSettings, setSavingSettings] = useState(false);
+   const [settingsError, setSettingsError] = useState("");
++  const [settingsNotice, setSettingsNotice] = useState("");
++  const [settingsSection, setSettingsSection] = useState<"connection" | "personality">("connection");
++  const [personality, setPersonalityText] = useState("");
++  const [savedPersonality, setSavedPersonality] = useState("");
++  const [personalityLoading, setPersonalityLoading] = useState(true);
++  const [personalityLoaded, setPersonalityLoaded] = useState(false);
++  const [personalitySaving, setPersonalitySaving] = useState(false);
++  const [personalityError, setPersonalityError] = useState("");
++  const [personalityNotice, setPersonalityNotice] = useState("");
++  const [personalityReload, setPersonalityReload] = useState(0);
++  const personalityDirty = personalityLoaded && personality !== savedPersonality;
++  const settingsBusy = savingSettings || personalitySaving;
++  const modalRef = useRef<HTMLDivElement>(null);
+   const missingKey = hasApiKey === false;
+   const idleStatus = status === "Online" || status === "Memory cleared" || status.startsWith("Model set to ");
+   const footerStatus = missingKey && idleStatus ? "No API key" : status;
+ 
+   function closeSettings() {
+-    if (savingSettings) return;
++    if (settingsBusy) return;
++    if (personalityDirty && !window.confirm("Discard your unsaved personality changes?")) return;
+     setApiKeyInput("");
+     setSettingsError("");
++    setSettingsNotice("");
+     setSettingsOpen(false);
+   }
+ 
+@@ -51,6 +68,60 @@ export default function App() {
+     });
+   }, [messages, loading]);
+ 
++  useEffect(() => {
++    if (!settingsOpen) return;
++    let cancelled = false;
++    setPersonalityLoading(true);
++    setPersonalityLoaded(false);
++    setPersonalityError("");
++    setPersonalityNotice("");
++    void getPersonality().then((text) => {
++      if (cancelled) return;
++      setPersonalityText(text);
++      setSavedPersonality(text);
++      setPersonalityLoaded(true);
++    }).catch((error) => {
++      if (!cancelled) setPersonalityError(error instanceof Error ? error.message : "Could not load personality");
++    }).finally(() => {
++      if (!cancelled) setPersonalityLoading(false);
++    });
++    return () => { cancelled = true; };
++  }, [settingsOpen, personalityReload]);
++
++  useEffect(() => {
++    if (!settingsOpen) return;
++    const previousFocus = document.activeElement as HTMLElement | null;
++    modalRef.current?.focus();
++    return () => { previousFocus?.focus(); };
++  }, [settingsOpen]);
++
++  useEffect(() => {
++    if (!settingsOpen || !personalityDirty) return;
++    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
++      event.preventDefault();
++      event.returnValue = "";
++    };
++    window.addEventListener("beforeunload", warnBeforeLeaving);
++    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
++  }, [settingsOpen, personalityDirty]);
++
++  async function savePersonality() {
++    if (settingsBusy || loading || !personalityLoaded || !personalityDirty || !personality.trim()) return;
++    setPersonalitySaving(true);
++    setPersonalityError("");
++    setPersonalityNotice("");
++    try {
++      const saved = await setPersonality(personality);
++      setPersonalityText(saved);
++      setSavedPersonality(saved);
++      setPersonalityNotice("Personality saved. Changes apply to your next message.");
++    } catch (error) {
++      setPersonalityError(error instanceof Error ? error.message : "Could not save personality");
++    } finally {
++      setPersonalitySaving(false);
++    }
++  }
++
+   async function initialize() {
+     try {
+       const [memory, currentModel, configured] = await Promise.all([
+@@ -147,7 +218,7 @@ export default function App() {
+   async function saveModel() {
+     const nextModel = model.trim();
+ 
+-    if (savingSettings || loading) return;
++    if (settingsBusy || loading) return;
+     if (!nextModel) {
+       setSettingsError("Enter an LLM model.");
+       return;
+@@ -155,6 +226,7 @@ export default function App() {
+ 
+     setSavingSettings(true);
+     setSettingsError("");
++    setSettingsNotice("");
+     let keySaved = false;
+     try {
+       if (apiKey.trim()) {
+@@ -166,7 +238,8 @@ export default function App() {
+       await setModel(nextModel);
+ 
+       setStatus(`Model set to ${nextModel}`);
+-      setSettingsOpen(false);
++      setSettingsNotice("Connection settings saved.");
++      // Keep Settings open so drafts in the Personality section are preserved.
+     } catch (error) {
+       setSettingsError(
+         (keySaved ? "API key saved, but model update failed. " : "") +
+@@ -437,7 +510,30 @@ export default function App() {
+           onMouseDown={closeSettings}
+         >
+           <div
+-            className="modal"
++            className="modal settings-modal"
++            ref={modalRef}
++            role="dialog"
++            aria-modal="true"
++            aria-labelledby="settings-title"
++            tabIndex={-1}
++            onKeyDown={(event) => {
++              if (event.key === "Escape") {
++                event.preventDefault();
++                closeSettings();
++              }
++              if (event.key === "Tab") {
++                const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
++                  'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)'
++                )).filter((element) => element.getClientRects().length > 0);
++                const first = controls[0];
++                const last = controls[controls.length - 1];
++                if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
++                  event.preventDefault(); last?.focus();
++                } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === event.currentTarget)) {
++                  event.preventDefault(); first?.focus();
++                }
++              }
++            }}
+             onMouseDown={(event) => {
+               event.stopPropagation();
+             }}
+@@ -448,70 +544,130 @@ export default function App() {
+                   SYSTEM CONFIGURATION
+                 </span>
+ 
+-                <h3>
++                <h3 id="settings-title">
+                   Settings
+                 </h3>
+               </div>
+ 
+               <button
+                 className="close-button"
++                aria-label="Close settings"
+                 onClick={closeSettings}
+-                disabled={savingSettings}
++                disabled={settingsBusy}
+               >
+                 ×
+               </button>
+             </div>
+ 
+-            <label>
+-              OpenRouter API key
+-              <input
+-                type="password"
+-                value={apiKey}
+-                onChange={(event) => setApiKeyInput(event.target.value)}
+-                placeholder={hasApiKey ? "Enter a replacement key" : "Enter your API key"}
+-                autoComplete="new-password"
+-                spellCheck={false}
+-                disabled={savingSettings}
+-                aria-describedby="api-key-help"
+-              />
+-            </label>
+-            <p className="settings-help" id="api-key-help">
+-              {hasApiKey ? "A key is saved. Leave blank to keep it." : "No API key is saved."}
+-              {" "}Saved on the computer running Amadeus. Saving does not verify the key.
+-            </p>
+-
+-            <label>
+-              LLM model
+-
+-              <input
+-                value={model}
+-                disabled={savingSettings}
+-                onChange={(event) => {
+-                  setModelName(event.target.value);
+-                }}
+-                placeholder="deepseek/deepseek-v3.2-exp"
+-              />
+-            </label>
+-
+-            {settingsError && <p className="settings-error" role="alert">{settingsError}</p>}
+-
+-            <div className="modal-actions">
+-              <button
+-                className="ghost-button"
+-                onClick={closeSettings}
+-                disabled={savingSettings}
+-              >
+-                Cancel
++            <nav className="settings-sections" aria-label="Settings sections">
++              <button type="button" aria-pressed={settingsSection === "connection"}
++                onClick={() => setSettingsSection("connection")}>Connection</button>
++              <button type="button" aria-pressed={settingsSection === "personality"}
++                onClick={() => setSettingsSection("personality")}>
++                Personality{personalityDirty && <span className="unsaved-dot" aria-label="Unsaved changes" />}
+               </button>
++            </nav>
++
++            <div hidden={settingsSection !== "connection"}>
++              <label>
++                OpenRouter API key
++                <input
++                  type="password"
++                  value={apiKey}
++                  onChange={(event) => setApiKeyInput(event.target.value)}
++                  placeholder={hasApiKey ? "Enter a replacement key" : "Enter your API key"}
++                  autoComplete="new-password"
++                  spellCheck={false}
++                  disabled={settingsBusy}
++                  aria-describedby="api-key-help"
++                />
++              </label>
++              <p className="settings-help" id="api-key-help">
++                {hasApiKey ? "A key is saved. Leave blank to keep it." : "No API key is saved."}
++                {" "}Saved on the computer running Amadeus. Saving does not verify the key.
++              </p>
+ 
+-              <button
+-                className="primary-button"
+-                onClick={saveModel}
+-                disabled={savingSettings || loading}
+-              >
+-                {savingSettings ? "Saving..." : "Apply"}
+-              </button>
++              <label>
++                LLM model
++
++                <input
++                  value={model}
++                  disabled={settingsBusy}
++                  onChange={(event) => {
++                    setModelName(event.target.value);
++                  }}
++                  placeholder="deepseek/deepseek-v3.2-exp"
++                />
++              </label>
++
++              {settingsError && <p className="settings-error" role="alert">{settingsError}</p>}
++              {settingsNotice && <p className="settings-success" role="status">{settingsNotice}</p>}
++
++              <div className="modal-actions">
++                <button
++                  className="ghost-button"
++                  onClick={closeSettings}
++                  disabled={settingsBusy}
++                >
++                  Close
++                </button>
++
++                <button
++                  className="primary-button"
++                  onClick={saveModel}
++                  disabled={settingsBusy || loading}
++                >
++                  {savingSettings ? "Saving..." : "Save connection"}
++                </button>
++              </div>
+             </div>
++
++            <section hidden={settingsSection !== "personality"} aria-label="Personality editor">
++              <p className="personality-intro" id="personality-help">
++                Shape how Amadeus speaks and responds. Edit the current personality below.
++              </p>
++              {personalityLoading ? <p className="settings-help" role="status">Loading personality...</p> : (
++                <>
++                  {personalityLoaded && <>
++                    <label htmlFor="personality-text">Personality instructions</label>
++                    <textarea id="personality-text" className="personality-text"
++                      value={personality} disabled={personalitySaving}
++                      aria-describedby="personality-help personality-hint"
++                      placeholder="Describe Amadeus’s personality, tone, and behavior..."
++                      onChange={(event) => {
++                        setPersonalityText(event.target.value);
++                        setPersonalityNotice("");
++                        setPersonalityError("");
++                      }} />
++                    <div className="personality-meta">
++                      <span>{personalityDirty ? "Unsaved changes" : "Current personality"}</span>
++                      <span>{personality.length.toLocaleString()} characters</span>
++                    </div>
++                    <p className="settings-help" id="personality-hint">
++                      Saved changes apply to your next message. Your conversation memory stays intact.
++                    </p>
++                    {personalityDirty && !personality.trim() && <p className="settings-help">Enter a personality before saving.</p>}
++                  </>}
++                  {personalityError && <p className="settings-error" role="alert">{personalityError}</p>}
++                  {personalityNotice && <p className="settings-success" role="status">{personalityNotice}</p>}
++                  <div className="modal-actions personality-actions">
++                    {!personalityLoaded ? <button className="ghost-button"
++                      onClick={() => setPersonalityReload((value) => value + 1)}>Retry loading</button> : <>
++                      <button className="ghost-button" disabled={settingsBusy || !personalityDirty}
++                        onClick={() => {
++                          setPersonalityText(savedPersonality);
++                          setPersonalityError("");
++                          setPersonalityNotice("");
++                        }}>Discard changes</button>
++                      <button className="primary-button" onClick={() => void savePersonality()}
++                        disabled={settingsBusy || loading || !personalityDirty || !personality.trim()}>
++                        {personalitySaving ? "Saving..." : "Save personality"}
++                      </button>
++                    </>}
++                  </div>
++                </>
++              )}
++            </section>
+           </div>
+         </div>
+       )}
+diff --git a/frontend/src/api.ts b/frontend/src/api.ts
+index 514508e..406eae7 100644
+--- a/frontend/src/api.ts
++++ b/frontend/src/api.ts
+@@ -11,6 +11,22 @@ export type MessageReply = {
+ 
+ const API_BASE = "http://127.0.0.1:5050";
+ 
++export async function getPersonality(): Promise<string> {
++  const data = await parseResponse(await fetch(`${API_BASE}/getPersonality`, { cache: "no-store" }));
++  if (typeof data.personality !== "string") throw new Error("Could not read personality");
++  return data.personality;
++}
++
++export async function setPersonality(personality: string): Promise<string> {
++  const data = await parseResponse(await fetch(`${API_BASE}/setPersonality`, {
++    method: "POST",
++    headers: { "Content-Type": "application/json" },
++    body: JSON.stringify({ personality }),
++  }));
++  if (typeof data.personality !== "string") throw new Error("Could not confirm saved personality");
++  return data.personality;
++}
++
+ export async function getApiKeyStatus(): Promise<boolean> {
+   const response = await fetch(`${API_BASE}/api_key_status`, { cache: "no-store" });
+   const data = await parseResponse(response);
+diff --git a/frontend/src/styles.css b/frontend/src/styles.css
+index 13f8994..46a4f55 100644
+--- a/frontend/src/styles.css
++++ b/frontend/src/styles.css
+@@ -525,6 +525,111 @@ button {
+   min-height: 38px;
+ }
+ 
++.settings-modal {
++  width: min(680px, 100%);
++}
++
++.settings-sections {
++  display: flex;
++  gap: 6px;
++  margin-bottom: 24px;
++  padding: 4px;
++  border: 1px solid rgba(255, 255, 255, 0.07);
++  border-radius: 9px;
++  background: #0b1017;
++}
++
++.settings-sections button {
++  flex: 1;
++  min-height: 38px;
++  border: 0;
++  border-radius: 6px;
++  background: transparent;
++  color: #8fa0b8;
++}
++
++.settings-sections button[aria-pressed="true"] {
++  background: #202c3b;
++  color: #edf1f7;
++}
++
++.unsaved-dot {
++  display: inline-block;
++  width: 6px;
++  height: 6px;
++  margin-left: 8px;
++  border-radius: 50%;
++  background: #d8b97b;
++  vertical-align: middle;
++}
++
++.personality-intro {
++  margin: 0 0 20px;
++  color: #aab7c9;
++  font-size: 14px;
++  line-height: 1.6;
++}
++
++.personality-text {
++  display: block;
++  width: 100%;
++  min-height: 180px;
++  height: clamp(200px, 36dvh, 400px);
++  margin-top: 10px;
++  padding: 16px;
++  resize: vertical;
++  border: 1px solid rgba(255, 255, 255, 0.12);
++  border-radius: 8px;
++  background: #0b1017;
++  color: #edf1f7;
++  font-size: 14px;
++  line-height: 1.75;
++}
++
++.personality-text:focus-visible,
++.settings-modal button:focus-visible {
++  outline: 2px solid #91b4e3;
++  outline-offset: 3px;
++}
++
++.personality-meta {
++  display: flex;
++  justify-content: space-between;
++  gap: 12px;
++  margin-top: 10px;
++  color: #8fa0b8;
++  font-size: 11px;
++}
++
++.settings-help {
++  margin: 10px 0 20px;
++  color: #8fa0b8;
++  font-size: 12px;
++  line-height: 1.6;
++}
++
++.settings-error,
++.settings-success {
++  margin: 16px 0 0;
++  font-size: 13px;
++  line-height: 1.5;
++}
++
++.settings-error { color: #f0a6a6; }
++.settings-success { color: #9ccdb5; }
++
++.settings-modal button:disabled {
++  opacity: 0.4;
++  cursor: not-allowed;
++}
++
++@media (max-width: 480px) {
++  .settings-modal { padding: 18px; }
++  .personality-text { font-size: 16px; }
++  .personality-actions { flex-direction: column-reverse; }
++  .personality-actions button { width: 100%; min-height: 42px; }
++}
++
+ @media (max-width: 850px) {
+   body {
+     overflow: auto;

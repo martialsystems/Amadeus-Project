@@ -7,7 +7,6 @@ import random
 default_LLM_Model = store.DEFAULT_LLM_MODEL
 API_KEY = store.load_api_key()
 LLM_Model = store.load_llm_model(default_model=default_LLM_Model)
-default_personality = store.load_default_personality_messages()
 
 
 #pre: The intended new_model is a string e.g., "deepseek/deepseek-v3.2-exp"
@@ -49,6 +48,10 @@ def setPersonality(new_personality: str):
     print("[Amadeus] Updated personality!")
 
 
+def getPersonality() -> str:
+    return store.load_personality()
+
+
 def has_api_key() -> bool:
     return bool(API_KEY.strip())
 
@@ -79,7 +82,7 @@ class AmadeusPack(BaseModel):
 # pre:
 # - message_context is a List[Dict[str, str]] with keys: "role" and "content"
 # - message_context contains recent user/assistant messages only (no system persona)
-# - default_personality and internal system context are available
+# - personality is read from disk for each reply; internal system context is available
 # - LLM (via LangChain + OpenRouter) is properly configured
 #
 # post:
@@ -105,7 +108,7 @@ def getResponsePacked(message_context) -> AmadeusPack:
     }
 
     messages = (
-        default_personality
+        store.load_default_personality_messages()
         + [store.load_internal_context()]
         + [pack_rules]
         + message_context
@@ -174,5 +177,4 @@ def SpecialInteraction(interaction_value: int) -> dict:
     store.append_message("user", event)
     store.append_message("assistant", response);    
     return {"response": response, "audio_url": variant.get("audio_url")}
-
 

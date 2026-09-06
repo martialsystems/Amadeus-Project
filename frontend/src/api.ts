@@ -11,6 +11,22 @@ export type MessageReply = {
 
 const API_BASE = "http://127.0.0.1:5050";
 
+export async function getPersonality(): Promise<string> {
+  const data = await parseResponse(await fetch(`${API_BASE}/getPersonality`, { cache: "no-store" }));
+  if (typeof data.personality !== "string") throw new Error("Could not read personality");
+  return data.personality;
+}
+
+export async function setPersonality(personality: string): Promise<string> {
+  const data = await parseResponse(await fetch(`${API_BASE}/setPersonality`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ personality }),
+  }));
+  if (typeof data.personality !== "string") throw new Error("Could not confirm saved personality");
+  return data.personality;
+}
+
 export async function getApiKeyStatus(): Promise<boolean> {
   const response = await fetch(`${API_BASE}/api_key_status`, { cache: "no-store" });
   const data = await parseResponse(response);
