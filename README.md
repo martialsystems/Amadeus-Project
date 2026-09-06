@@ -21,20 +21,22 @@ The current development version includes:
 - Runtime LLM model switching
 - GPT-SoVITS character voice synthesis
 - Live2D Cubism rendering directly in the WebUI
+- Natural looping idle and talking-body motions
+- Touch interactions with one-shot character reactions
+- Browser-side streamed speech playback
+- Audio-amplitude-driven Live2D lip synchronization
+- Paired text + prerecorded audio variants for special interactions
 - Cross-platform automatic launcher for macOS and Windows
 - Backend connection/status display
 - Conversation memory reset controls
 
-The current Live2D pipeline can load and render a Cubism model, textures, and WebGL shaders in the browser.
+The Live2D character system now handles idle, talking, touch reactions, motion priority, and audio-driven mouth movement in the browser. Generated GPT-SoVITS speech is streamed through Flask to the WebUI, where the same audio signal sent to the speakers is analyzed to drive `ParamMouthOpenY`.
 
 Next major character-system work includes:
 
-- Idle motions
-- Cubism physics
-- Touch / hit-area interaction
-- Special touch reactions
-- Lip synchronization
-- Expression and motion control from model responses
+- More expression and motion control from model responses
+- Richer hit-area and interaction behavior
+- Expanding the prerecorded interaction voice library
 - Improved prompting and character-state control
 - A future redesign of the long-term memory system
 
@@ -68,7 +70,7 @@ Amadeus is split into three main runtime components:
 Default local services:
 
 ```text
-GPT-SoVITS        http://127.0.0.1:9872
+GPT-SoVITS        http://127.0.0.1:9880
 Amadeus backend   http://127.0.0.1:5050
 Amadeus WebUI     http://127.0.0.1:5173
 ```
@@ -365,7 +367,7 @@ Amadeus includes a shared Python launcher used by the macOS and Windows startup 
 The launcher:
 
 1. Checks for Conda, npm, and required project files.
-2. Clears stale Amadeus listeners from ports `9872`, `5050`, and `5173`.
+2. Clears stale Amadeus listeners from ports `9880`, `5050`, and `5173`.
 3. Installs frontend dependencies if `frontend/node_modules/` is missing.
 4. Starts GPT-SoVITS in the `GPTSoVits` Conda environment.
 5. Waits for the voice server to become available.
@@ -441,7 +443,7 @@ python start_gptsovits.py
 GPT-SoVITS normally listens on:
 
 ```text
-http://127.0.0.1:9872
+http://127.0.0.1:9880
 ```
 
 ## Backend
@@ -520,6 +522,27 @@ frontend/public/live2dcubismcore.min.js
 
 The project previously experimented with a Pixi-based Live2D integration. That approach was removed in favor of direct use of the current official Cubism Web SDK.
 
+## Character Motion and Lip Sync
+
+The browser-side character system now separates body motion from mouth motion.
+
+- `MotionPlayer.ts` manages looping `Idle` and `Talk` states plus higher-priority one-shot reactions.
+- `SpeechPlayer.ts` plays streamed audio in the browser and measures the actual waveform with the Web Audio API.
+- The measured amplitude is smoothed and applied to `ParamMouthOpenY`.
+- Touch reactions can interrupt the talking-body loop without stopping lip sync.
+- When a reaction finishes, the character returns to `Talk` if audio is still playing, otherwise `Idle`.
+
+The current Kurisu motion set includes a longer natural idle, a subtle talking-body loop, a head-pat reaction, and special touch reactions.
+
+Prerecorded interaction lines are stored under:
+
+```text
+backend/assets/reaction_audio/
+```
+
+and are served through Flask to the same browser audio/lip-sync path used by generated speech.
+
+
 ---
 
 # Updating Amadeus
@@ -590,7 +613,7 @@ Deleting this database removes the locally stored conversation history.
 The launcher attempts to clear stale Amadeus listeners from:
 
 ```text
-9872
+9880
 5050
 5173
 ```
@@ -638,7 +661,7 @@ When running the full launcher, inspect:
 Check that GPT-SoVITS is available at:
 
 ```text
-http://127.0.0.1:9872
+http://127.0.0.1:9880
 ```
 
 Also verify that the required pretrained models exist under:
@@ -739,11 +762,14 @@ Live2D model scaling          ✓
 Cubism shader integration     ✓
 Idle motion                   ✓
 Cubism physics                ✓
-Touch interaction             implementing
+Touch interaction             ✓
 Special touch reactions       ✓
+Talking-body motion           ✓
+Browser streamed speech       ✓
+Audio-driven lip sync         ✓
+Prerecorded interaction audio ✓
 Prompting improvements        planned (high priority)
-Lip synchronization           later
-Expression control            later
+Expression control            next
 Memory redesign               later
 ```
 
@@ -752,6 +778,51 @@ Longer-term ideas include richer character interaction, additional activities su
 ---
 
 # Changelog
+
+## Interactive Live2D, Lip Sync, and Voiced Reactions — September 5, 2026
+
+### Natural Character Motions
+
+Expanded the Live2D motion system beyond basic rendering:
+
+- Replaced the short mechanical idle with a longer, subtler loop using breathing, irregular blinking, small eye movement, and restrained arm/hair motion.
+- Added a dedicated head-pat reaction with eye closing, blush, and small relaxed movement.
+- Added a looping talking-body motion that intentionally leaves mouth opening under audio control.
+- Added motion priority and automatic return to the correct baseline state after reactions.
+
+### Browser Speech + Audio-Driven Lip Sync
+
+Speech playback moved into the browser so Live2D can react to the exact audio being heard.
+
+```text
+GPT-SoVITS
+    ↓
+Flask /speech/<speech_id>
+    ↓
+SpeechPlayer.ts
+    ├── browser playback
+    └── Web Audio analyser
+             ↓
+        RMS amplitude
+             ↓
+      ParamMouthOpenY
+```
+
+The talking-body motion and mouth motion are independent, allowing Kurisu to continue lip syncing while a higher-priority touch reaction is playing.
+
+### Interaction Voice Lines
+
+Special interactions now pair displayed text and optional recordings as one response variant so the visible reply, saved memory entry, and audio stay synchronized.
+
+Prerecorded reaction voice lines are stored under:
+
+```text
+backend/assets/reaction_audio/
+```
+
+and use the same browser playback and lip-sync path as generated GPT-SoVITS speech.
+
+---
 
 ## Native GPT-SoVITS Streaming TTS — September 5, 2026
 
