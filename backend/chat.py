@@ -1,12 +1,37 @@
+import os
 import memory as store
-from llm import get_llm, reset_llm
 from pydantic import BaseModel, Field
 from chat_interactions import INTERACTION_EVENTS, INTERACTION_RESPONSES
+from local_replies import scripted_reply
 import random
 
 default_LLM_Model = store.DEFAULT_LLM_MODEL
 API_KEY = store.load_api_key()
 LLM_Model = store.load_llm_model(default_model=default_LLM_Model)
+
+
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def uses_local_replies() -> bool:
+    """True when chat should skip OpenRouter (forced, or no API key)."""
+    if _env_flag("AMADEUS_NO_AI"):
+        return True
+    return not has_api_key()
+
+
+def get_llm(api_key: str, model: str):
+    from llm import get_llm as build_llm
+    return build_llm(api_key, model)
+
+
+def reset_llm():
+    try:
+        from llm import reset_llm as reset_client
+    except ImportError:
+        return
+    reset_client()
 
 
 #pre: The intended new_model is a string e.g., "deepseek/deepseek-v3.2-exp"
@@ -146,9 +171,16 @@ def getOutputPacked(user_message: str) -> AmadeusPack:
     # Snapshot the previous turn before the new message becomes the latest one.
     internal_context = store.load_internal_context()
     store.append_message("user", user_message)
-    context = store.build_prompt_messages()[-80:]
 
-    pack = getResponsePacked(context, internal_context=internal_context)
+    if uses_local_replies():
+        english, japanese = scripted_reply(user_message)
+        pack = AmadeusPack(
+            assistant_reply_ENG=english,
+            assistant_reply_JPS=japanese,
+        )
+    else:
+        context = store.build_prompt_messages()[-80:]
+        pack = getResponsePacked(context, internal_context=internal_context)
 
     # Store what the user actually sees
     store.append_message("assistant", pack.assistant_reply_ENG)

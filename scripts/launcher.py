@@ -227,7 +227,12 @@ def open_log(name: str) -> IO[str]:
     return handle
 
 
-def start_process(name: str, command: list[str], cwd: Path) -> subprocess.Popen:
+def start_process(
+    name: str,
+    command: list[str],
+    cwd: Path,
+    env: dict[str, str] | None = None,
+) -> subprocess.Popen:
     log = open_log(name)
 
     kwargs: dict = {
@@ -236,6 +241,10 @@ def start_process(name: str, command: list[str], cwd: Path) -> subprocess.Popen:
         "stderr": subprocess.STDOUT,
         "text": True,
     }
+    if env is not None:
+        merged = os.environ.copy()
+        merged.update(env)
+        kwargs["env"] = merged
 
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -284,13 +293,16 @@ def cleanup() -> None:
             pass
 
 
-def check_required_paths() -> None:
+def check_required_paths(no_ai: bool = False) -> None:
     required = [
         BACKEND_DIR / "main.py",
-        BACKEND_DIR / "start_gptsovits.py",
         FRONTEND_DIR / "package.json",
-        GPT_DIR,
     ]
+    if not no_ai:
+        required.extend([
+            BACKEND_DIR / "start_gptsovits.py",
+            GPT_DIR,
+        ])
 
     missing = [path for path in required if not path.exists()]
 
@@ -316,23 +328,24 @@ def ensure_frontend_dependencies(npm: str) -> None:
     print("[Launcher] Frontend dependencies installed.")
 
 
-def preflight(conda: str, npm: str) -> None:
-    check_required_paths()
+def preflight(conda: str | None, npm: str, no_ai: bool) -> None:
+    check_required_paths(no_ai=no_ai)
 
     print("[Launcher] Preflight")
     print(f"  Project : {PROJECT_ROOT}")
-    print(f"  Conda   : {conda}")
+    print(f"  Mode    : {'local no-AI' if no_ai else 'full stack'}")
+    print(f"  Conda   : {conda or '(not used)'}")
     print(f"  npm     : {npm}")
     print(f"  Python  : {sys.executable}")
 
 
-def run(no_browser: bool = False) -> None:
-    conda = find_conda()
+def run(no_browser: bool = False, no_ai: bool = False) -> None:
+    conda = None if no_ai else find_conda()
     npm = find_npm()
 
-    if not conda:
+    if not no_ai and not conda:
         raise RuntimeError(
-            "Conda was not found. Install Anaconda/Miniconda or make conda available on PATH."
+            "Conda was not found. Install Anaconda/Miniconda, or launch with --no-ai."
         )
 
     if not npm:
@@ -340,31 +353,35 @@ def run(no_browser: bool = False) -> None:
             "npm was not found. Install Node.js before launching the WebUI."
         )
 
-    preflight(conda, npm)
+    preflight(conda, npm, no_ai=no_ai)
     clear_stale_amadeus_processes()
     ensure_frontend_dependencies(npm)
 
-    print("\n[Launcher] Starting GPT-SoVITS...")
-    gpt = start_process(
-        "gptsovits",
-        [
-            conda,
-            "run",
-            "-n",
-            "GPTSoVITS",
-            "--no-capture-output",
-            "python",
-            str(BACKEND_DIR / "start_gptsovits.py"),
-        ],
-        PROJECT_ROOT,
-    )
-    wait_for_port("GPT-SoVITS", GPT_PORT, gpt, timeout=180)
+    gpt = None
+    if not no_ai:
+        print("\n[Launcher] Starting GPT-SoVITS...")
+        gpt = start_process(
+            "gptsovits",
+            [
+                conda,
+                "run",
+                "-n",
+                "GPTSoVITS",
+                "--no-capture-output",
+                "python",
+                str(BACKEND_DIR / "start_gptsovits.py"),
+            ],
+            PROJECT_ROOT,
+        )
+        wait_for_port("GPT-SoVITS", GPT_PORT, gpt, timeout=180)
 
     print("[Launcher] Starting Amadeus backend...")
+    backend_env = {"AMADEUS_NO_AI": "1"} if no_ai else None
     backend = start_process(
         "backend",
         [sys.executable, "main.py"],
         BACKEND_DIR,
+        env=backend_env,
     )
     wait_for_port("backend", BACKEND_PORT, backend, timeout=45)
 
@@ -379,7 +396,11 @@ def run(no_browser: bool = False) -> None:
     url = f"http://127.0.0.1:{FRONTEND_PORT}/"
 
     print("\n========================================")
-    print(" Amadeus is online")
+    if no_ai:
+        print(" Amadeus is online (local scripted replies)")
+        print(" OpenRouter and GPT-SoVITS are not started.")
+    else:
+        print(" Amadeus is online")
     print(f" {url}")
     print(" Press Ctrl+C to shut everything down.")
     print(" Relaunching Amadeus will clean stale processes automatically.")
@@ -388,12 +409,12 @@ def run(no_browser: bool = False) -> None:
     if not no_browser:
         webbrowser.open(url)
 
+    watched = [("backend", backend), ("WebUI", frontend)]
+    if gpt is not None:
+        watched.insert(0, ("GPT-SoVITS", gpt))
+
     while True:
-        for name, process in (
-            ("GPT-SoVITS", gpt),
-            ("backend", backend),
-            ("WebUI", frontend),
-        ):
+        for name, process in watched:
             return_code = process.poll()
             if return_code is not None:
                 raise RuntimeError(
@@ -411,10 +432,15 @@ def main() -> int:
         action="store_true",
         help="Do not automatically open the WebUI in a browser.",
     )
+    parser.add_argument(
+        "--no-ai",
+        action="store_true",
+        help="Start WebUI and Flask only. Skip Conda, OpenRouter, and GPT-SoVITS.",
+    )
     args = parser.parse_args()
 
     try:
-        run(no_browser=args.no_browser)
+        run(no_browser=args.no_browser, no_ai=args.no_ai)
         return 0
     except KeyboardInterrupt:
         return 0

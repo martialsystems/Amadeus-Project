@@ -1,9 +1,11 @@
 import os
 import platform
 import shutil
+import socket
 import subprocess
 import threading
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
@@ -16,6 +18,18 @@ REF_TXT = "ん? ほっと来てくれませんか?ん? ふざけてないでち�
 GPTSOVITS_API_URL = os.getenv("GPTSOVITS_API_URL", "http://127.0.0.1:9880")
 STREAMING_MODE = int(os.getenv("GPTSOVITS_STREAMING_MODE", "1"))
 _speech_lock = threading.Lock()
+
+
+def tts_available() -> bool:
+    """True when the GPT-SoVITS REST API is listening locally."""
+    parsed = urlparse(GPTSOVITS_API_URL)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 9880
+    try:
+        with socket.create_connection((host, port), timeout=0.2):
+            return True
+    except OSError:
+        return False
 
 
 def _request_payload(text: str) -> dict:

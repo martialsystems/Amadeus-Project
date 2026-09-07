@@ -21,7 +21,10 @@ class PersonalityTests(unittest.TestCase):
         self.addCleanup(sys.path.remove, backend)
         modules = patch.dict(sys.modules, {
             'llm': SimpleNamespace(get_llm=lambda *args: None, reset_llm=lambda: None),
-            'tts': SimpleNamespace(streamVoiceChunks=lambda text: iter(())),
+            'tts': SimpleNamespace(
+                streamVoiceChunks=lambda text: iter(()),
+                tts_available=lambda: False,
+            ),
         })
         modules.start()
         self.addCleanup(modules.stop)

@@ -5,7 +5,7 @@ import {
   getCurrentModel,
   getPersonality,
   setPersonality,
-  getApiKeyStatus,
+  getRuntimeStatus,
   setApiKey,
   getMemory,
   MemoryMessage,
@@ -26,6 +26,7 @@ export default function App() {
   const [status, setStatus] = useState("Connecting to Amadeus...");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [noAi, setNoAi] = useState(false);
   const [apiKey, setApiKeyInput] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState("");
@@ -42,9 +43,12 @@ export default function App() {
   const personalityDirty = personalityLoaded && personality !== savedPersonality;
   const settingsBusy = savingSettings || personalitySaving;
   const modalRef = useRef<HTMLDivElement>(null);
-  const missingKey = hasApiKey === false;
+  const missingKey = hasApiKey === false && !noAi;
   const idleStatus = status === "Online" || status === "Memory cleared" || status.startsWith("Model set to ");
-  const footerStatus = missingKey && idleStatus ? "No API key" : status;
+  const footerStatus =
+    noAi && idleStatus ? "Online · local replies" :
+    missingKey && idleStatus ? "No API key" :
+    status;
 
   function closeSettings() {
     if (settingsBusy) return;
@@ -124,15 +128,16 @@ export default function App() {
 
   async function initialize() {
     try {
-      const [memory, currentModel, configured] = await Promise.all([
+      const [memory, currentModel, runtime] = await Promise.all([
         getMemory(),
         getCurrentModel(),
-        getApiKeyStatus(),
+        getRuntimeStatus(),
       ]);
 
       setMessages(memory);
       setModelName(currentModel);
-      setHasApiKey(configured);
+      setHasApiKey(runtime.configured);
+      setNoAi(runtime.noAi);
       setStatus("Online");
     } catch (error) {
       setStatus(
@@ -152,7 +157,7 @@ export default function App() {
       return;
     }
 
-    if (hasApiKey !== true) {
+    if (hasApiKey !== true && !noAi) {
       setSettingsOpen(true);
       return;
     }
@@ -236,9 +241,16 @@ export default function App() {
         setApiKeyInput("");
       }
       await setModel(nextModel);
+      const runtime = await getRuntimeStatus();
+      setHasApiKey(runtime.configured);
+      setNoAi(runtime.noAi);
 
       setStatus(`Model set to ${nextModel}`);
-      setSettingsNotice("Connection settings saved.");
+      setSettingsNotice(
+        runtime.noAi
+          ? "Connection settings saved. Chat still uses local scripted replies."
+          : "Connection settings saved."
+      );
       // Keep Settings open so drafts in the Personality section are preserved.
     } catch (error) {
       setSettingsError(

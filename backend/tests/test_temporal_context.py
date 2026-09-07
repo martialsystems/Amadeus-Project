@@ -68,7 +68,12 @@ class TemporalContextTests(unittest.TestCase):
             with store.sqlite3.connect(store.PATH_TO_MEMORY) as conn:
                 conn.execute("UPDATE messages SET created_at = '2026-09-06 14:10'")
             original_context = store.load_internal_context
-            scope = {'store': store, 'AmadeusPack': object, 'getResponsePacked': respond}
+            scope = {
+                'store': store,
+                'AmadeusPack': object,
+                'getResponsePacked': respond,
+                'uses_local_replies': lambda: False,
+            }
             exec(compile(ast.Module(body=[function], type_ignores=[]), 'chat.py', 'exec'), scope)
             with patch.object(store, 'load_internal_context', side_effect=lambda: original_context(now)):
                 scope['getOutputPacked']('Hello again')

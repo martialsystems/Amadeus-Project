@@ -33,18 +33,33 @@ find_conda() {
     return 1
 }
 
-CONDA_EXE="$(find_conda)" || {
-    echo "ERROR: Conda could not be found."
-    echo "Install Anaconda/Miniconda, then try again."
-    echo
-    read "?Press Enter to close..."
-    exit 1
-}
+CONDA_EXE="$(find_conda || true)"
+VENV_PYTHON="$PROJECT_ROOT/backend/.venv/bin/python"
 
-"$CONDA_EXE" run \
-    -n amadeus \
-    --no-capture-output \
-    python "$PROJECT_ROOT/scripts/launcher.py"
+if [[ -n "${CONDA_EXE:-}" ]]; then
+    "$CONDA_EXE" run \
+        -n amadeus \
+        --no-capture-output \
+        python "$PROJECT_ROOT/scripts/launcher.py"
+else
+    echo "Conda was not found. Starting the local no-AI stack instead."
+    echo "This runs the WebUI, Flask, Live2D, and prerecorded reactions."
+    echo "OpenRouter and GPT-SoVITS are skipped."
+    echo
+    if [[ ! -x "$VENV_PYTHON" ]]; then
+        echo "ERROR: backend/.venv was not found."
+        echo "Create it once:"
+        echo
+        echo "  python3.12 -m venv backend/.venv"
+        echo "  backend/.venv/bin/pip install -r backend/requirements-no-ai.txt"
+        echo
+        echo "Or install Anaconda/Miniconda and use the full stack."
+        echo
+        read "?Press Enter to close..."
+        exit 1
+    fi
+    "$VENV_PYTHON" "$PROJECT_ROOT/scripts/launcher.py" --no-ai
+fi
 
 EXIT_CODE=$?
 

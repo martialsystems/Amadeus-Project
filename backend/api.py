@@ -12,9 +12,10 @@ from chat import (
     SpecialInteraction,
     setPersonality,
     getPersonality,
+    uses_local_replies,
 )
 
-from tts import streamVoiceChunks
+from tts import streamVoiceChunks, tts_available
 
 import threading
 import uuid
@@ -52,7 +53,10 @@ def set_api_key():
 
 @application.route("/api_key_status", methods=["GET"])
 def api_key_status():
-    response = jsonify({"configured": has_api_key()})
+    response = jsonify({
+        "configured": has_api_key(),
+        "no_ai": uses_local_replies(),
+    })
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -64,16 +68,21 @@ def api_key_status():
 # - returns English UI text to the client
 @application.route("/", methods=["POST"])
 def request_message():
-    if not has_api_key():
-        return jsonify({"message": "No API key. Add one in Settings."}), 400
-    print("[Flask] / route triggered")  
-    content = request.get_json()
+    print("[Flask] / route triggered")
+    content = request.get_json() or {}
     user_input = content.get("user_input", "")
 
     pack = getOutputPacked(user_input)
     print("\n[Flask]: ENG:", pack.assistant_reply_ENG)
     print("[Flask]: JPS:", pack.assistant_reply_JPS)
-    
+
+    payload = {"response": pack.assistant_reply_ENG}
+
+    # Local scripted turns have no GPT-SoVITS stream. Skip the speech ticket
+    # so the WebUI does not wait on a missing voice server.
+    if uses_local_replies() or not tts_available():
+        return jsonify(payload)
+
     # Give the browser a single-use speech id. The browser then opens the
     # streaming WAV endpoint, so the same sound that reaches the speakers also
     # drives the Live2D analyser/lip sync.
@@ -86,10 +95,8 @@ def request_message():
         while len(_speech_requests) > 20:
             _speech_requests.pop(next(iter(_speech_requests)))
 
-    return jsonify({
-        "response": pack.assistant_reply_ENG,
-        "speech_id": speech_id,
-    })
+    payload["speech_id"] = speech_id
+    return jsonify(payload)
 
 @application.route("/speech/<speech_id>", methods=["GET"])
 def speech(speech_id):

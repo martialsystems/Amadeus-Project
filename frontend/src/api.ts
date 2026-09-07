@@ -27,11 +27,23 @@ export async function setPersonality(personality: string): Promise<string> {
   return data.personality;
 }
 
-export async function getApiKeyStatus(): Promise<boolean> {
+export type RuntimeStatus = {
+  configured: boolean;
+  noAi: boolean;
+};
+
+export async function getRuntimeStatus(): Promise<RuntimeStatus> {
   const response = await fetch(`${API_BASE}/api_key_status`, { cache: "no-store" });
   const data = await parseResponse(response);
   if (typeof data.configured !== "boolean") throw new Error("Could not read API key status");
-  return data.configured;
+  return {
+    configured: data.configured,
+    noAi: data.no_ai === true,
+  };
+}
+
+export async function getApiKeyStatus(): Promise<boolean> {
+  return (await getRuntimeStatus()).configured;
 }
 
 export async function setApiKey(key: string): Promise<void> {

@@ -427,6 +427,47 @@ The backend exposes model-control endpoints including:
 
 ---
 
+# Local run without OpenRouter or GPT-SoVITS
+
+This fork can start the browser UI without Conda, OpenRouter, or GPT-SoVITS.
+
+What runs:
+
+- React WebUI at `http://127.0.0.1:5173`
+- Flask backend at `http://127.0.0.1:5050`
+- Live2D character
+- SQLite conversation memory
+- Prerecorded head-pat and special-touch audio
+
+Chat replies are scripted. Save an OpenRouter key in Settings later if you want model-generated dialogue. Generated Japanese speech still needs GPT-SoVITS.
+
+## One-time setup (macOS, no Conda)
+
+```bash
+git lfs install
+git lfs pull
+python3.12 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements-no-ai.txt
+cd frontend && npm install && cd ..
+chmod +x start_local.command
+```
+
+## Start
+
+```bash
+./start_local.command
+```
+
+or:
+
+```bash
+backend/.venv/bin/python scripts/launcher.py --no-ai
+```
+
+`start_macos.command` uses this path automatically when Conda is missing.
+
+---
+
 # Launching Amadeus
 
 Amadeus includes a shared Python launcher used by the macOS and Windows startup scripts.
@@ -849,6 +890,15 @@ Longer-term ideas include richer character interaction, additional activities su
 ---
 
 # Changelog
+
+## Local no-AI launch (2026-09-07)
+
+Added a Flask-plus-WebUI path that starts without Conda, OpenRouter, or GPT-SoVITS.
+
+- Chat without an API key uses scripted replies and stores them in SQLite.
+- `AMADEUS_NO_AI=1` and `scripts/launcher.py --no-ai` skip the voice server.
+- `start_local.command` and a Conda-missing fallback in `start_macos.command` use `backend/.venv`.
+- Touch reactions still serve the prerecorded WAVs.
 
 ## Interactive Live2D, Lip Sync, and Voiced Reactions — September 5, 2026
 
