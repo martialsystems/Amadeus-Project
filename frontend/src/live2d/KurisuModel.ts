@@ -15,8 +15,11 @@ export class KurisuModel extends CubismUserModel {
   private released = false;
   private ready = false;
   private speaking = false;
+  private sleeping = false;
+  private sleepBlend = 0;
   private lipSyncValue = 0;
   private readonly mouthOpenId = CubismFramework.getIdManager().getId("ParamMouthOpenY");
+  private readonly eyeOpenId = CubismFramework.getIdManager().getId("ParamEyeROpen");
 
   constructor(private readonly gl: WebGLRenderingContext) {
     super();
@@ -83,6 +86,10 @@ export class KurisuModel extends CubismUserModel {
     this.lipSyncValue = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
   }
 
+  setSleeping(sleeping: boolean): void {
+    this.sleeping = sleeping;
+  }
+
   update(deltaSeconds: number): void {
     if (!this.ready) return;
     const model = this.getModel();
@@ -93,6 +100,17 @@ export class KurisuModel extends CubismUserModel {
     model.saveParameters();
     if (this.speaking) {
       model.setParameterValueById(this.mouthOpenId, this.lipSyncValue);
+    }
+    const sleepTarget = this.sleeping ? 1 : 0;
+    const sleepStep = deltaSeconds / 0.4;
+    if (this.sleepBlend < sleepTarget) {
+      this.sleepBlend = Math.min(sleepTarget, this.sleepBlend + sleepStep);
+    } else if (this.sleepBlend > sleepTarget) {
+      this.sleepBlend = Math.max(sleepTarget, this.sleepBlend - sleepStep);
+    }
+    if (this.sleepBlend > 0) {
+      const open = model.getParameterValueById(this.eyeOpenId);
+      model.setParameterValueById(this.eyeOpenId, open * (1 - this.sleepBlend));
     }
     model.update();
   }
@@ -114,6 +132,8 @@ export class KurisuModel extends CubismUserModel {
     this.released = true;
     this.ready = false;
     this.speaking = false;
+    this.sleeping = false;
+    this.sleepBlend = 0;
     this.lipSyncValue = 0;
     this.loading.abort();
     this.motions.release();

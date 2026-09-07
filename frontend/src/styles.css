@@ -60,3 +60,57 @@ button {
 .touch-button:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.85);
 }
+
+.zzz-layer {
+  position: absolute;
+  top: 8%;
+  left: 62%;
+  z-index: 12;
+  width: 72px;
+  height: 90px;
+  pointer-events: none;
+}
+
+.zzz {
+  position: absolute;
+  color: #9ec0e6;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(8, 12, 20, 0.35);
+  animation: zzz-float 2.4s ease-in-out infinite;
+}
+
+.zzz-a {
+  left: 0;
+  bottom: 0;
+  font-size: 18px;
+  animation-delay: 0s;
+}
+
+.zzz-b {
+  left: 18px;
+  bottom: 10px;
+  font-size: 22px;
+  animation-delay: 0.45s;
+}
+
+.zzz-c {
+  left: 38px;
+  bottom: 22px;
+  font-size: 28px;
+  animation-delay: 0.9s;
+}
+
+@keyframes zzz-float {
+  0% {
+    opacity: 0;
+    transform: translate(0, 10px) rotate(-8deg);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -52px) rotate(12deg);
+  }
+}

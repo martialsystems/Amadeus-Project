@@ -440,6 +440,12 @@ What runs:
 
 Click the figure to play a reaction. Drag her to move the window. Right-click the overlay, or use the Amadeus menu, to quit. Empty pixels click through to the desktop.
 
+After 45 seconds without a click she sleeps, eyes closed, with `z`s off the head. A click wakes her. Head-pat and special-touch lines play in English, baked from `backend/assets/reference_audio/kurisu10s.wav`. Japanese originals stay in `backend/assets/reaction_audio/ja/`. Re-bake with:
+
+```bash
+backend/.venv-xtts/bin/python backend/scripts/bake_english_voice.py
+```
+
 ## One-time setup (macOS, no Conda)
 
 ```bash
@@ -889,6 +895,10 @@ Longer-term ideas include richer character interaction, additional activities su
 ---
 
 # Changelog
+
+## Bust crop, sleep/ZZZ, English cloned voice (2026-09-07)
+
+Idle sleep after 45 seconds shows closed eyes and `z`s. Click reactions use English WAVs cloned from `kurisu10s.wav`; Japanese masters are under `reaction_audio/ja/`.
 
 ## Desktop overlay, no chat (2026-09-07)
 

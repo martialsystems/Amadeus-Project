@@ -4,6 +4,7 @@ type OverlayHost = NonNullable<Window["overlay"]>;
 
 export function startOverlayPointer(options: {
   hitTest: (clientX: number, clientY: number) => boolean;
+  onActivity?: () => void;
 }): () => void {
   const overlay = window.overlay;
   if (overlay === undefined) return () => {};
@@ -12,7 +13,10 @@ export function startOverlayPointer(options: {
 
 function attachOverlayPointer(
   host: OverlayHost,
-  options: { hitTest: (clientX: number, clientY: number) => boolean },
+  options: {
+    hitTest: (clientX: number, clientY: number) => boolean;
+    onActivity?: () => void;
+  },
 ): () => void {
   let ignoring = true;
   let dragging = false;
@@ -54,9 +58,13 @@ function attachOverlayPointer(
 
   function onDown(event: MouseEvent) {
     if (event.button !== 0) return;
-    if (event.target instanceof Element && event.target.closest(".touch-button")) {
-      return;
+    const overButton =
+      event.target instanceof Element &&
+      event.target.closest(".touch-button") !== null;
+    if (overButton || options.hitTest(event.clientX, event.clientY)) {
+      options.onActivity?.();
     }
+    if (overButton) return;
     if (!options.hitTest(event.clientX, event.clientY)) return;
     dragging = true;
     lastX = event.screenX;

@@ -226,6 +226,10 @@ export class KurisuController {
     if (!this.destroyed) this.model?.setLipSyncValue(value);
   }
 
+  setSleeping(sleeping: boolean): void {
+    if (!this.destroyed) this.model?.setSleeping(sleeping);
+  }
+
   destroy(): void {
     this.destroyed = true;
 

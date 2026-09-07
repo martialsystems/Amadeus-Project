@@ -15,8 +15,6 @@ export const interactions = {
     backendId: 2,
     motion: "PatReaction",
     label: "Head Pat",
-    // All four values use the shared 600 x 800 character design space.
-    // 15% x 7.5% corresponds to 90 x 60 design pixels.
     position: { top: "11%", left: "50%", width: "25%", height: "7.5%" },
   },
 };
