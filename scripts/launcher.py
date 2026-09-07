@@ -8,7 +8,6 @@ import socket
 import subprocess
 import sys
 import time
-import webbrowser
 from pathlib import Path
 from typing import IO
 
@@ -74,6 +73,14 @@ def find_npm() -> str | None:
             return candidate
 
     return None
+
+
+def find_electron() -> str | None:
+    binary = "electron.cmd" if os.name == "nt" else "electron"
+    local = FRONTEND_DIR / "node_modules" / ".bin" / binary
+    if local.exists():
+        return str(local)
+    return shutil.which(binary)
 
 
 def port_open(port: int) -> bool:
@@ -394,22 +401,34 @@ def run(no_browser: bool = False, no_ai: bool = False) -> None:
     wait_for_port("WebUI", FRONTEND_PORT, frontend, timeout=45)
 
     url = f"http://127.0.0.1:{FRONTEND_PORT}/"
+    overlay = None
+    if not no_browser:
+        electron = find_electron()
+        if not electron:
+            raise RuntimeError(
+                "Electron was not found. From frontend/, run npm install, then try again."
+            )
+        print("[Launcher] Starting desktop overlay...")
+        overlay = start_process(
+            "overlay",
+            [electron, str(FRONTEND_DIR / "electron" / "main.cjs")],
+            FRONTEND_DIR,
+            env={"AMADEUS_RENDERER_URL": url},
+        )
 
     print("\n========================================")
     if no_ai:
-        print(" Amadeus is online (local scripted replies)")
-        print(" OpenRouter and GPT-SoVITS are not started.")
+        print(" Amadeus overlay is online (no OpenRouter, no GPT-SoVITS)")
     else:
-        print(" Amadeus is online")
-    print(f" {url}")
+        print(" Amadeus overlay is online")
+    print(" Click the figure. Drag to move. Right-click to quit.")
+    print(f" Renderer: {url}")
     print(" Press Ctrl+C to shut everything down.")
-    print(" Relaunching Amadeus will clean stale processes automatically.")
     print("========================================\n")
 
-    if not no_browser:
-        webbrowser.open(url)
-
     watched = [("backend", backend), ("WebUI", frontend)]
+    if overlay is not None:
+        watched.append(("overlay", overlay))
     if gpt is not None:
         watched.insert(0, ("GPT-SoVITS", gpt))
 
@@ -417,6 +436,9 @@ def run(no_browser: bool = False, no_ai: bool = False) -> None:
         for name, process in watched:
             return_code = process.poll()
             if return_code is not None:
+                if name == "overlay" and return_code == 0:
+                    print("[Launcher] Overlay closed.")
+                    return
                 raise RuntimeError(
                     f"{name} stopped unexpectedly with exit code {return_code}. "
                     "Check .runtime/logs for details."
@@ -430,7 +452,7 @@ def main() -> int:
     parser.add_argument(
         "--no-browser",
         action="store_true",
-        help="Do not automatically open the WebUI in a browser.",
+        help="Do not open the desktop overlay window.",
     )
     parser.add_argument(
         "--no-ai",

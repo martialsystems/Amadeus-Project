@@ -1,6 +1,6 @@
 # Amadeus frontend
 
-Run `npm ci` once, then `npm run dev`. `npm run build` checks the app's types and produces the production bundle. Flask normally listens on port 5050.
+The shipped UI is a transparent always-on-top overlay. `npm run dev` serves the Live2D renderer; `npm run overlay` opens the Electron window. Flask on port 5050 serves the click-reaction audio. `npm run build` checks types and produces the production bundle.
 
 ## Add an interaction
 

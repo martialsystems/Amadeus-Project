@@ -429,17 +429,16 @@ The backend exposes model-control endpoints including:
 
 # Local run without OpenRouter or GPT-SoVITS
 
-This fork can start the browser UI without Conda, OpenRouter, or GPT-SoVITS.
+This fork starts Kurisu as a transparent desktop overlay: no chat panel, no OpenRouter, no GPT-SoVITS.
 
 What runs:
 
-- React WebUI at `http://127.0.0.1:5173`
-- Flask backend at `http://127.0.0.1:5050`
-- Live2D character
-- SQLite conversation memory
-- Prerecorded head-pat and special-touch audio
+- Always-on-top overlay window (Electron)
+- Live2D character with head-pat and special-touch clicks
+- Flask backend at `http://127.0.0.1:5050` for the prerecorded reaction audio
+- Vite renderer at `http://127.0.0.1:5173`
 
-Chat replies are scripted. Save an OpenRouter key in Settings later if you want model-generated dialogue. Generated Japanese speech still needs GPT-SoVITS.
+Click the figure to play a reaction. Drag her to move the window. Right-click the overlay, or use the Amadeus menu, to quit. Empty pixels click through to the desktop.
 
 ## One-time setup (macOS, no Conda)
 
@@ -891,11 +890,18 @@ Longer-term ideas include richer character interaction, additional activities su
 
 # Changelog
 
+## Desktop overlay, no chat (2026-09-07)
+
+Replaced the conversation UI with a transparent always-on-top overlay.
+
+- Electron window: click-through on empty pixels, drag to move, right-click to quit.
+- Head-pat and special-touch still play the prerecorded lines.
+- Local launch still skips Conda, OpenRouter, and GPT-SoVITS.
+
 ## Local no-AI launch (2026-09-07)
 
 Added a Flask-plus-WebUI path that starts without Conda, OpenRouter, or GPT-SoVITS.
 
-- Chat without an API key uses scripted replies and stores them in SQLite.
 - `AMADEUS_NO_AI=1` and `scripts/launcher.py --no-ai` skip the voice server.
 - `start_local.command` and a Conda-missing fallback in `start_macos.command` use `backend/.venv`.
 - Touch reactions still serve the prerecorded WAVs.

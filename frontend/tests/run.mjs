@@ -12,6 +12,7 @@ globalThis.Live2DCubismCore = runInThisContext(
 )(createRequire(import.meta.url), root);
 const server = await createServer({ root, server: { middlewareMode: true }, appType: "custom" });
 try {
+  await server.ssrLoadModule("/tests/overlay.test.ts");
   await server.ssrLoadModule("/tests/motions.test.ts");
   await server.ssrLoadModule("/tests/speech.test.ts");
 } finally {

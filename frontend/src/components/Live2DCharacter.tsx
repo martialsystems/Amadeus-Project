@@ -12,6 +12,7 @@ import type { PlayMotionResult } from "../live2d/MotionPlayer";
 
 export type Live2DCharacterHandle = {
   playMotion: (group: string) => PlayMotionResult;
+  hitTest: (clientX: number, clientY: number) => boolean;
   prepareSpeech: () => Promise<void>;
   playSpeech: (url: string) => Promise<void>;
   stopSpeech: () => void;
@@ -28,6 +29,9 @@ const Live2DCharacter = forwardRef<Live2DCharacterHandle, { onSpeechError?: (mes
     useImperativeHandle(ref, () => ({
       playMotion(group: string) {
         return controllerRef.current?.playMotion(group) ?? "not-ready";
+      },
+      hitTest(clientX: number, clientY: number) {
+        return controllerRef.current?.hitTest(clientX, clientY) ?? false;
       },
       async prepareSpeech() {
         await speechPlayerRef.current?.prepare();

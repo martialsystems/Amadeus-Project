@@ -1,58 +1,9 @@
-export type MemoryMessage = {
-  role: string;
-  content: string;
-  created_at?: string;
-};
-
 export type MessageReply = {
   response: string;
   speechUrl?: string;
 };
 
 const API_BASE = "http://127.0.0.1:5050";
-
-export async function getPersonality(): Promise<string> {
-  const data = await parseResponse(await fetch(`${API_BASE}/getPersonality`, { cache: "no-store" }));
-  if (typeof data.personality !== "string") throw new Error("Could not read personality");
-  return data.personality;
-}
-
-export async function setPersonality(personality: string): Promise<string> {
-  const data = await parseResponse(await fetch(`${API_BASE}/setPersonality`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ personality }),
-  }));
-  if (typeof data.personality !== "string") throw new Error("Could not confirm saved personality");
-  return data.personality;
-}
-
-export type RuntimeStatus = {
-  configured: boolean;
-  noAi: boolean;
-};
-
-export async function getRuntimeStatus(): Promise<RuntimeStatus> {
-  const response = await fetch(`${API_BASE}/api_key_status`, { cache: "no-store" });
-  const data = await parseResponse(response);
-  if (typeof data.configured !== "boolean") throw new Error("Could not read API key status");
-  return {
-    configured: data.configured,
-    noAi: data.no_ai === true,
-  };
-}
-
-export async function getApiKeyStatus(): Promise<boolean> {
-  return (await getRuntimeStatus()).configured;
-}
-
-export async function setApiKey(key: string): Promise<void> {
-  await parseResponse(await fetch(`${API_BASE}/set_key`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key }),
-  }));
-}
 
 async function parseResponse(response: Response) {
   const data = await response.json().catch(() => ({}));
@@ -64,75 +15,6 @@ async function parseResponse(response: Response) {
   }
 
   return data;
-}
-
-export async function sendMessage(userInput: string): Promise<MessageReply> {
-  const response = await fetch(`${API_BASE}/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      user_input: userInput,
-    }),
-  });
-
-  const data = await parseResponse(response);
-  if (typeof data.response !== "string") {
-    throw new Error("Backend returned an invalid response");
-  }
-
-  return {
-    response: data.response,
-    speechUrl:
-      typeof data.speech_id === "string"
-        ? `${API_BASE}/speech/${encodeURIComponent(data.speech_id)}`
-        : undefined,
-  };
-}
-
-export async function getMemory(): Promise<MemoryMessage[]> {
-  const response = await fetch(`${API_BASE}/getMemory`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  const data = await parseResponse(response);
-  return data.messages ?? [];
-}
-
-export async function resetMemory(): Promise<void> {
-  const response = await fetch(`${API_BASE}/memory_reset`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  await parseResponse(response);
-}
-
-export async function getCurrentModel(): Promise<string> {
-  const response = await fetch(`${API_BASE}/getCurrLLMModel`);
-
-  const data = await parseResponse(response);
-  return data.message ?? "";
-}
-
-export async function setModel(model: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/setLLMModel`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-    }),
-  });
-
-  await parseResponse(response);
 }
 
 export async function sendInteraction(interactionValue: number): Promise<MessageReply> {

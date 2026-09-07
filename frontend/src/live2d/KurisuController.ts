@@ -34,6 +34,7 @@ export class KurisuController {
         alpha: true,
         premultipliedAlpha: true,
         antialias: true,
+        preserveDrawingBuffer: true,
       }
     );
 
@@ -197,6 +198,21 @@ export class KurisuController {
         this.render
       );
   };
+
+  hitTest(clientX: number, clientY: number): boolean {
+    if (this.destroyed || !this.gl) return false;
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const x = Math.floor((clientX - rect.left) * (this.canvas.width / rect.width));
+    const y = Math.floor((rect.bottom - clientY) * (this.canvas.height / rect.height));
+    if (x < 0 || y < 0 || x >= this.canvas.width || y >= this.canvas.height) {
+      return false;
+    }
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+    const pixel = new Uint8Array(4);
+    this.gl.readPixels(x, y, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixel);
+    return pixel[3] > 16;
+  }
 
   playMotion(group: string): PlayMotionResult {
     return this.destroyed ? "not-ready" : this.model?.playMotion(group) ?? "not-ready";
